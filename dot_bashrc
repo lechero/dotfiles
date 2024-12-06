@@ -95,6 +95,9 @@ alias ".."='cd ..'
 alias "..."='cd ../..'
 alias "...."='cd ../../..'
 alias qq="exit"
+alias v="nvim"
+
+set -o vi
 
 # Alias definitions.
 # You may want to put all your additions into a separate file like
