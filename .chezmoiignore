@@ -1,0 +1,7 @@
+# Neovim
+dot_config/nvim/lazy-lock.json
+**/autoload/
+**/autoload/**/*
+**/plugged/
+**/plugged/**/*
+**/yankring_history*.txt
