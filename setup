@@ -1,0 +1,36 @@
+#!/bin/bash
+
+set -e  # Exit immediately if a command exits with a non-zero status
+
+# Path to the cloned dotfiles
+DOTFILES_DIR="$HOME/dotfiles"
+CHEZMOI_SOURCE_DIR="$HOME/.local/share/chezmoi"
+
+# Ensure chezmoi is installed
+if ! command -v chezmoi &>/dev/null; then
+    echo "Error: chezmoi is not installed."
+    exit 1
+fi
+
+chezmoi init --source="$DOTFILES_DIR"
+#
+# # Create the chezmoi source directory if it doesn't exist
+# if [ ! -d "$CHEZMOI_SOURCE_DIR" ]; then
+#     echo "Creating chezmoi source directory..."
+#     mkdir -p "$CHEZMOI_SOURCE_DIR"
+# fi
+#
+# # Initialize chezmoi with the dotfiles directory
+# if [ ! -f "$CHEZMOI_SOURCE_DIR/chezmoi.toml" ]; then
+#     echo "Initializing chezmoi with source directory $DOTFILES_DIR..."
+#     chezmoi init --source="$DOTFILES_DIR"
+# else
+#     echo "chezmoi already initialized. Updating source directory to $DOTFILES_DIR..."
+#     chezmoi source path "$DOTFILES_DIR"
+# fi
+#
+# Apply dotfiles
+echo "Applying dotfiles..."
+chezmoi apply
+
+echo "Dotfiles have been successfully applied!"
