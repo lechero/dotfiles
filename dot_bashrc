@@ -95,7 +95,7 @@ alias ".."='cd ..'
 alias "..."='cd ../..'
 alias "...."='cd ../../..'
 alias qq="exit"
-alias v="nvim"
+alias v="neovim"
 
 set -o vi
 
@@ -162,3 +162,5 @@ if [[ "$TERM" == "xterm" ]]; then
     # Append to PROMPT_COMMAND to call precmd before displaying the prompt
     PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND; }precmd"
 fi
+
+eval "$(starship init bash)"
