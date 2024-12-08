@@ -95,7 +95,9 @@ alias ".."='cd ..'
 alias "..."='cd ../..'
 alias "...."='cd ../../..'
 alias qq="exit"
-alias v="neovim"
+alias v="nvim"
+alias cls="clear"
+alias lg="lazygit"
 
 set -o vi
 
@@ -163,10 +165,5 @@ if [[ "$TERM" == "xterm" ]]; then
     PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND; }precmd"
 fi
 
-alias ... ="cd ../.."
-alias .... ="cd ../../.."
-alias cls="clear"
-alias v="nvim"
-alias lg="lazygit"
 
 eval "$(starship init bash)"
