@@ -3,6 +3,7 @@
 echo "This is the 'setup' RUNNING" 
 pwd
 ls -al
+curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh
 chezmoi init lechero/dotfiles
 chezmoi apply
 echo "Setup is DONE"
