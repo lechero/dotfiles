@@ -163,4 +163,10 @@ if [[ "$TERM" == "xterm" ]]; then
     PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND; }precmd"
 fi
 
+alias ... ="cd ../.."
+alias .... ="cd ../../.."
+alias cls="clear"
+alias v="nvim"
+alias lg="lazygit"
+
 eval "$(starship init bash)"
