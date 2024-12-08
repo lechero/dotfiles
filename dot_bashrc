@@ -165,5 +165,5 @@ if [[ "$TERM" == "xterm" ]]; then
     PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND; }precmd"
 fi
 
-
+eval "$(fzf --bash)"
 eval "$(starship init bash)"
