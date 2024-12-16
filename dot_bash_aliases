@@ -6,10 +6,32 @@ alias ".."='cd ..'
 alias "..."='cd ../..'
 alias "...."='cd ../../..'
 alias qq="exit"
+alias cm="chezmoi"
+alias f="fzf"
 alias v="nvim"
 alias cls="clear"
 alias lg="lazygit"
 
-set -o vi
+c() {
+  # Use find to list both files and directories and pipe to fzf
+  local selection=$(find . -type d -o -type f | fzf)
 
+  # Check if user made a selection
+  if [[ -n "$selection" ]]; then
+    if [[ -d "$selection" ]]; then
+      # If it's a directory, cd into it
+      cd "$selection" || echo "Failed to cd into $selection"
+    elif [[ -f "$selection" ]]; then
+      # If it's a file, cat the file
+      cat "$selection"
+    else
+      echo "$selection is neither a file nor a directory."
+    fi
+  else
+    # If no selection was made, show ls -al
+    ls -al
+  fi
+}
+
+set -o vi
 
