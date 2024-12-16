@@ -156,5 +156,5 @@ fi
 export PATH="$HOME/.local/bin:$PATH"
 eval "$(zoxide init bash)"
 
-eval "$(fzf --bash)"
+# eval "$(fzf --bash)"
 eval "$(starship init bash)"
