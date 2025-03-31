@@ -105,6 +105,8 @@ vim.keymap.set("n", "<leader>3", "3gt", { silent = true })
 vim.keymap.set("n", "<leader>4", "4gt", { silent = true })
 vim.keymap.set("n", "<leader>5", "5gt", { silent = true })
 
+vim.keymap.set("n", ";l", "\"ayiwoconsole.log('<C-R>a:', <C-R>a);<Esc>", { silent = true })
+
 vim.opt.conceallevel = 1
 
 vim.opt.tabstop = 2
