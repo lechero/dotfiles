@@ -20,7 +20,7 @@ return {
 			-- hide suggestion text when completion menu is open (to avoid overlap)
 			hide_during_completion = true,
 		},
-		panel = { enabled = false }, -- disable Copilot panel (not used in this setup)
+		panel = { enabled = false, auto_refresh = true }, -- disable Copilot panel (not used in this setup)
 		filetypes = {
 			markdown = true, -- enable in Markdown (disabled by default) [oai_citation:4‡neovimcraft.com](https://neovimcraft.com/plugin/zbirenbaum/copilot.lua/#:~:text=require%28,env%20files%20return%20false)
 			yaml = false, -- (example) keep disabled for YAML files
