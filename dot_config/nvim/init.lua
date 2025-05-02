@@ -107,6 +107,21 @@ vim.keymap.set("n", "<leader>5", "5gt", { silent = true })
 
 vim.keymap.set("n", ";l", "\"ayiwoconsole.log('<C-R>a:', <C-R>a);<Esc>", { silent = true })
 
+-- Toggle the main chat window
+vim.keymap.set("n", "<Leader>cc", function()
+	require("CopilotChat").toggle()
+end, { desc = "Toggle Copilot Chat" })
+
+-- Quick-chat the whole buffer
+vim.keymap.set("n", "<Leader>ccq", function()
+	local input = vim.fn.input("Quick Chat ▶ ")
+	if input ~= "" then
+		require("CopilotChat").ask(input, {
+			selection = require("CopilotChat.select").buffer,
+		})
+	end
+end, { desc = "CopilotChat – Quick Chat" })
+
 vim.opt.conceallevel = 1
 
 vim.opt.tabstop = 2
@@ -752,6 +767,7 @@ require("lazy").setup({
 	require("fuentastic.plugins.trouble"),
 	require("fuentastic.plugins.copilot-cmp"),
 	require("fuentastic.plugins.nvim-cmp"),
+	require("fuentastic.plugins.copilotchat"),
 
 	-- {
 	-- 	"zbirenbaum/copilot-cmp",
