@@ -1,3 +1,14 @@
+-- from wookayin’s Reddit reply
+local has_words_before = function()
+	if vim.bo[0].buftype == "prompt" then
+		return false
+	end
+	-- support Lua 5.1 and 5.2+
+	local unpack = unpack or table.unpack
+	local line, col = unpack(vim.api.nvim_win_get_cursor(0))
+	return col ~= 0 and vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match("%s") == nil
+end
+
 return {
 	"hrsh7th/nvim-cmp",
 	event = "InsertEnter",
@@ -55,7 +66,7 @@ return {
 					if copilot_suggestion.is_visible() then
 						-- If a Copilot inline suggestion is showing, accept it
 						copilot_suggestion.accept()
-					elseif cmp.visible() and require("cmp.utils.misc").has_words_before() then
+					elseif cmp.visible() and has_words_before() then
 						-- If completion menu is open and cursor is after a character, select next item [oai_citation:14‡github.com](https://github.com/zbirenbaum/copilot-cmp#:~:text=mapping%20%3D%20%7B%20%5B,end%20end%29%2C)
 						cmp.select_next_item({ behavior = cmp.SelectBehavior.Select })
 					elseif require("luasnip").expand_or_jumpable() then
