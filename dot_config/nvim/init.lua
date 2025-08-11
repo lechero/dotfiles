@@ -111,7 +111,7 @@ vim.keymap.set("n", "<leader>fp", function()
 end, { desc = "Copy absolute file path (pbcopy)" })
 
 -- <leader>fy: Copy current buffer with a header containing project-relative path (nearest `package.json`) to pbcopy
-vim.keymap.set("n", "<leader>fy", function()
+vim.keymap.set("n", "<leader>fyy", function()
 	local buf = 0
 	local fname = vim.api.nvim_buf_get_name(buf)
 	if fname == "" then
@@ -157,6 +157,72 @@ vim.keymap.set("n", "<leader>fy", function()
 	vim.fn.system("pbcopy", payload)
 	vim.notify("Copied with header: " .. rel)
 end, { desc = "Copy file with project-relative header (pbcopy)" })
+
+-- <leader>fy: Copy buffer wrapped in ``` with header containing project-relative path
+vim.keymap.set("n", "<leader>fyc", function()
+	local buf = 0
+	local fname = vim.api.nvim_buf_get_name(buf)
+	if fname == "" then
+		vim.notify("No file name for current buffer", vim.log.levels.WARN)
+		return
+	end
+
+	local abspath = vim.fn.fnamemodify(fname, ":p")
+	local filedir = (vim.fs and vim.fs.dirname) and vim.fs.dirname(abspath) or vim.fn.fnamemodify(abspath, ":h")
+
+	-- Find nearest package.json upwards
+	local found = vim.fs.find("package.json", { upward = true, path = filedir })[1]
+	local root = found and vim.fs.dirname(found) or (vim.uv or vim.loop).cwd()
+
+	-- Path relative to root
+	local rel
+	do
+		local ok, r = pcall(function()
+			return vim.fs.relative(abspath, root)
+		end)
+		if ok and r then
+			rel = r
+		else
+			rel = abspath:gsub("^" .. vim.pesc(root .. "/"), "")
+		end
+	end
+
+	-- Always use // for the header comment (per your note)
+	local header = "// " .. rel
+
+	-- Get buffer content (includes unsaved changes)
+	local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+	local body = table.concat(lines, "\n")
+
+	-- Choose a language tag for the code fence
+	local ft = vim.bo[buf].filetype or ""
+	local lang_map = {
+		typescriptreact = "tsx",
+		javascriptreact = "jsx",
+		typescript = "ts",
+		javascript = "js",
+		sh = "bash",
+		yml = "yaml",
+	}
+	local lang = lang_map[ft] or ft -- fall back to raw ft or empty
+
+	local top_fence = "```" .. (lang ~= "" and lang or "")
+	local payload = table.concat({
+		top_fence,
+		header,
+		body,
+		"```",
+		"", -- trailing newline
+	}, "\n")
+
+	if vim.fn.executable("pbcopy") ~= 1 then
+		vim.notify("pbcopy not found on PATH", vim.log.levels.ERROR)
+		return
+	end
+
+	vim.fn.system("pbcopy", payload)
+	vim.notify("Copied code block with header: " .. rel)
+end, { desc = "Copy file as fenced code block with header (pbcopy)" })
 
 vim.keymap.set("n", "<leader>1", "1gt", { silent = true })
 vim.keymap.set("n", "<leader>2", "2gt", { silent = true })
