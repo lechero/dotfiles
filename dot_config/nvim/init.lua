@@ -99,6 +99,65 @@ vim.keymap.set("n", ";to", ":tab split<CR>", { silent = true })
 vim.keymap.set("n", ";ts", ":tab split<CR>", { silent = true })
 vim.keymap.set("n", ";tc", ":tabclose<CR>", { silent = true })
 
+-- Copy current buffer's absolute path to macOS clipboard (pbcopy)
+vim.keymap.set("n", "<leader>fp", function()
+	local path = vim.fn.expand("%:p")
+	if path == "" then
+		vim.notify("No file name for current buffer", vim.log.levels.WARN)
+		return
+	end
+	vim.fn.system("pbcopy", path) -- send to pbcopy via stdin
+	vim.notify("Copied: " .. path)
+end, { desc = "Copy absolute file path (pbcopy)" })
+
+-- <leader>fy: Copy current buffer with a header containing project-relative path (nearest `package.json`) to pbcopy
+vim.keymap.set("n", "<leader>fy", function()
+	local buf = 0
+	local fname = vim.api.nvim_buf_get_name(buf)
+	if fname == "" then
+		vim.notify("No file name for current buffer", vim.log.levels.WARN)
+		return
+	end
+
+	-- Absolute file path and dir
+	local abspath = vim.fn.fnamemodify(fname, ":p")
+	local filedir = (vim.fs and vim.fs.dirname) and vim.fs.dirname(abspath) or vim.fn.fnamemodify(abspath, ":h")
+
+	-- Find nearest package.json upwards
+	local found = vim.fs.find("package.json", { upward = true, path = filedir })[1]
+	local root = found and vim.fs.dirname(found) or (vim.uv or vim.loop).cwd()
+
+	-- Compute path relative to root; fallback if needed
+	local rel
+	do
+		local ok, r = pcall(function()
+			return vim.fs.relative(abspath, root)
+		end)
+		if ok and r then
+			rel = r
+		else
+			rel = abspath:gsub("^" .. vim.pesc(root .. "/"), "")
+		end
+	end
+
+	-- Always use // for the header comment (per your note)
+	local header = "// " .. rel
+
+	-- Grab current buffer (unsaved changes included)
+	local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+	local body = table.concat(lines, "\n")
+
+	local payload = header .. "\n" .. body
+
+	if vim.fn.executable("pbcopy") ~= 1 then
+		vim.notify("pbcopy not found on PATH", vim.log.levels.ERROR)
+		return
+	end
+
+	vim.fn.system("pbcopy", payload)
+	vim.notify("Copied with header: " .. rel)
+end, { desc = "Copy file with project-relative header (pbcopy)" })
+
 vim.keymap.set("n", "<leader>1", "1gt", { silent = true })
 vim.keymap.set("n", "<leader>2", "2gt", { silent = true })
 vim.keymap.set("n", "<leader>3", "3gt", { silent = true })
