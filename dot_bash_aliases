@@ -11,6 +11,7 @@ alias f="fzf"
 alias v="nvim"
 alias cls="clear"
 alias lg="lazygit"
+alias lz="lazydocker"
 alias y="gh copilot suggest -t shell"
 
 c() {
