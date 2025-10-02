@@ -13,6 +13,9 @@ alias cls="clear"
 alias lg="lazygit"
 alias lz="lazydocker"
 alias y="gh copilot suggest -t shell"
+catall() {
+  find . -type f -exec sh -c 'echo "$1"; cat "$1"' _ {} \;
+}
 
 c() {
   # Use find to list both files and directories and pipe to fzf
