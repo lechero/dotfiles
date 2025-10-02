@@ -5,3 +5,4 @@ dot_config/nvim/lazy-lock.json
 **/plugged/
 **/plugged/**/*
 **/yankring_history*.txt
+.DS_Store
