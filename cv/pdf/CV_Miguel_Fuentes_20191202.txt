@@ -1,0 +1,256 @@
+Miguel            Miguel Fuentes
+Fuentes           Rijnweg 29
+                  1628 PB, Hoorn
+
+(ing)             (+31) 0645476686
+                  miguel@midgetgiraffe.com
+Digital Creator   http:/fuentastic.com
+
+
+ㅡ
+Visie             Technologie zelf is nooit een doel. Het doel is om de ervaring van de mens
+                  positief te augmenteren door middel van techniek en logica. De interface tussen
+                  mens en computer is waar wij nu tekort komen. De woelige en onstuitbare
+                  opmars van de transistor revolutie heeft velen in onbalans gebracht. Het is de
+                  taak van ons “Digitale Ingenieurs” om een vloeiende interactie te bieden tussen
+                  samenleving en de nog onbekende mogelijkheden die deze voortgang biedt. Dit
+                  alles zou moeten gebeuren in een veilige en duurzame omgeving en uitwerking.
+                  “Difficult takes a day, impossible takes a week” - Jay Z
+
+ㅡ
+Ervaring          Triplebeam/​Openbare plattegrond systeem met panorama
+                  functionaliteit. (Photo Reality)
+                  2015-04 tot Heden
+                  Gebaseerd op inhouse ontwikkeld javascript framework (SagaJS). Een systeem
+                  om virtuele plattegronden voor gebouwen te maken met (street view)
+                  panorama functionaliteit. Voor zowel desktop als mobiel.
+                      ●     Research, Design and Development
+                      ●     Frontend (HTML, SVG, CSS, JS, SagaJS, TweenLite, Grunt, UI, Flash
+                            Fallback (Actionscript 3))
+                  (​http://vumcplattegrond.nl/​, ​https://mumcplattegrond.nl/​,
+                  https://plattegrondumcutrecht.nl/​)
+
+                  ING/​Full-stack developer
+                  2017-03 tot 2019-07, Leeuwarden
+                  Senior front-end Team DaVinci. Het beheer en ontwikkelen van alle
+                  functionaliteit rondom “hoedanigheden” met een focus op de front-end. Het
+                  vertalen van de wensen, zowel intern als extern, van de stakeholders voor het
+                  optimaliseren van de processen en de ervaring van de eindgebruiker.
+                      ●   Front-end (Javascript, Angular, Polymer, LitHTML, Redux, Node/NPM
+                          Karma, Jasmine, Vanilla JS, web components, (REST) api’s
+                      ●   Back-end (Java, Maven, Jenkins etc)
+                      ●   SCRUM/Agile, Knowledge sharing, Continuous integration, Git/SVN,
+                          Artifactory, Selenium, Unit/E2E testing
+
+
+                  Valda.nl (RTL)/​Consultant & front-end developer.
+                  2017-01 tot 2017-02, Hilversum
+                  Ontwikkelen van webplatform voor Valda.nl voor de eerste oplevering.
+                  Consultant & front-end developer.
+    ●   Frontend Development (HTML, SVG, Vue.js, TweenLite, Gulp,
+        Webpack, UI)
+    ●   Backend Development (PHP, Laravel/ Unix/AWS)
+    ●   SCRUM/Agile, Quick problem solving meetings, Continuous
+        integration, Git/SVN
+
+Universiteit van Utrecht/​Technical Director, Coördinator
+2015-06 tot 2016-12, Utrecht
+Teamlead Front- & Back-end: aansturen van het webteam, schakel tussen de
+organisatie en developers. Optimaliseren van huidige processen en snel (
+binnen 1 a 2 kwartalen) kunnen vertalen van wensen van organisatie.
+Uiteenlopend tussen systemen die hoge (wetenschappelijke) reken capaciteiten
+vergen voor hoogleraren tot facilitaire systemen rondom de organisatie van de
+Universiteit.
+    ●   Frontend Development (HTML, SVG, CSS, JS, SagaJS, TweenLite,
+        Grunt, UI, Angular)
+    ●   Backend Development (PHP/ Codeigniter/ Laravel/ NodeJS)
+    ●   Sysops (Server beheer, Debian, Ubuntu, Centos), Management. AWS.
+    ●   SCRUM/Agile, Quick problem solving meetings, Continuous
+        integration, Git/SVN
+
+Plastica, Wall of Frame/​Lead Developer. ​http://fuentastic.com/plastica
+2016-05 tot 2016-07
+Ontwerp en ontwikkeling voor een online configurator systeem rondom
+modulaire systeem muren voor het bedrijf Plastica.
+    ●   Frontend Development (HTML5, SVG, CSS, JS, SagaJS, TweenLite,
+        Grunt, UI)
+    ●   Backend Development (PHP/ composer)
+
+AT5 & RTVNH /​Full-stack developer.
+2015-08 tot 2016-05, Amsterdam
+Senior Front-End engineer. Verantwoordelijk voor het aansturen van het
+Front-end team en dienen als schakel tussen Frontend, Backend en de
+organisatie. Onderhouden web-portal, management IT projecten, App
+development, Video to web process. Snel schakelen om de wensen van de
+organisatie mogelijk te maken. Zoals bij stadsevenementen in Amsterdam (AT5)
+waarin snel geschakeld moet worden tussen het bieden van content en
+bereikbaar houden hiervan.
+    ●   Frontend Development (HTML, SVG, CSS, JS, SagaJS, TweenLite,
+        Grunt, UI)
+    ●   Backend Development (PHP/ZEND/ Laravel/ Phalcon, NodeJS)
+    ●   Sysops (Server beheer, Debian, Ubuntu, Centos)
+    ●   SCRUM/Agile, Process optimalisation, High-end media integration,
+        Git/SVN
+
+Kruidvat, Voetbalboeken /​Consultant & front-end developer.
+2015-06 tot 2015-08
+Consultant idea to realisation. Front-End developer. Stack design en
+ontwikkeling boek editor in Javascript. Multiupload, print quality detection etc.
+    ●   Frontend Development (HTML, SVG, CSS, JS, SagaJS, TweenLite,
+        Grunt, UI)
+    ●   Backend Development (PHP, Zend)
+Byline.com / ​Consultant & lead developer
+2015-01 tot 2015-04, Amsterdam / Londen
+Lead Developer. Verantwoordelijk voor het technisch uitwerken van het eerste
+concept. Realiseren van dit ontwerp door het verzamelen en coördineren van
+een internationaal team (Polen, India, Estados Unidos) voor het behalen van
+een lastige deadline.
+    ●   Frontend Development (HTML, SVG, CSS, JS, jQuery, TweenLite/Max,
+        Grunt, UI)
+    ●   Backend Development (Wordpress, PHP)
+    ●   Agile, Project Management / Technical Director
+
+Zorgkiezer.nl /​Consultant & back-end developer.
+2014-08 tot 2014-12, Amsterdam
+Coördinator externe koppelingen. Opzetten en aanpassen van de data export
+naar de zorgleveranciers. Exports via Soap, Ftp, sFtp, email. Technisch
+contactpersoon naar zorgleveranciers toe voor de exports. Meegeholpen aan
+het omzetten naar nieuwe design van de front-end.
+    ●   Frontend Development (HTML, SVG, CSS, JS, jQuery)
+    ●   Backend Development (PHP, Unix, Zend), XML, Soap, (s)Ftp, email
+        automation
+    ●   Scrum/Agile, Coordinator technical communication
+
+Converse International, The Ticket/​Lead developer
+2014-05 tot 2014-07, Amsterdam
+Fringe Advertisement, Onderzoek en development mogelijkheden om DOM
+manipulatie te realiseren via een browser-extensie. Zoek algoritme om
+advertenties te vinden in een pagina en deze te vervangen met campagne
+advertenties.
+    ●   Browser extensions: Chrome / Firefox extensions (JS, underscore,
+        require),
+    ●   Unit testing (Unix, PhantomJS, NodeJS)
+
+LG Benelux, One second of Fame/​Lead backend developer
+2014-04 tot 2014-05, Amsterdam
+Lead Backend architect & developer. Ontwikkeling backend voor het WK spel
+“ONE SECOND OF FAME” van LG. Tevens achterliggend management en
+administratie systeem gebouwd. Opzetten en coördineren van hardware
+realisatie om de hoge druk aan te kunnen tijdens de WK wedstrijden.
+    ●   Backend/Database Developer (PHP, mySQL, Unix),
+    ●   Frontend Developer (HTML, JS, CSS,backbone, bootstrap, grunt)
+
+SagaJS, JS framework/​Creator
+2014-04 tot heden, Hoorn
+Custom Javascript framework to replace jQuery/backbone with only
+fundamental functions for a single page application.Includes (Asset Loading,
+Events, Utils, Dom Manipulation,Panorama, Graph, Keyboard, Routing)
+    ●   Vanilla Javascript, Typescript, Build tools
+
+WeMarket (WeTransfer B2B platform)/ ​Senior Backend engineer
+2013-10 tot 2014-04, Amsterdam
+Lead Backend developer. Verantwoordelijk voor alle backend software
+ontwikkeling. Uitwerking technisch concept.
+    ●   Frontend Development (HTML, CSS, JS, jQuery etc)
+    ●   Backend Development (PHP, Unix, Zend, Laravel), XML, Soap
+    ●   Sysops (Server beheer, Debian, Ubuntu, Centos), Database engineer,
+        AWS
+    ●   Scrum/Agile
+
+Magic Bullet/​Back-End Developer, Engineer
+2010-05 tot 2013-10, Amsterdam
+Senior Backend Developer. Verantwoordelijk voor complete backend/server
+side architectuur en acquisitie van juiste middelen voor het realiseren van
+High-End advertentie campagnes. Zowel nationaal als internationaal
+(Heineken, Rivella, Nike, Samsung International, LG etc)
+    ●   Project Architecture & Managements, Research & Development, Quick
+        Ad-Hoc solutions.
+    ●   Backend Development (Ruby, PHP/ Zend/ Laravel/ Symfony, NodeJS)
+    ●   Database engineer (MySQL, NOSQL)
+    ●   Sysops (Unix, AWS, VM)
+    ●   Client-Side developer (Javascript, Flash, Actionscript 2/3, Facebook
+        Applications, angular, react)
+
+Zwaluwhoeve/​Technical Innovator
+2009-08 tot 2010-02, Hierden
+Innovator. Oplevering compleet telefooncentrale systeem gebaseerd op
+Asterisk. Geïntegreerd met CRM systemen en zelfbedachte Up-Selling
+systemen. Digitaliseren van manuele processen. Innoveren in het gebruik van
+techniek om de ervaring van de klant te optimaliseren.
+    ●   Server Side, Unix SIP, Asterisk, PHP, MySQL
+    ●   Client Side: Flash Based interface systems, HTML/CSS/JS
+    ●   Installaties: Custom Narrowcasting systems. RFID based quick
+        admission upselling system
+
+OGD detachering /​ Flash , PHP , Javascript Developer
+2008-09 tot 2009-08, Nederland
+Developer. Applicatie ontwikkelaar OGD. Gewerkt aan TopDesk en diverse
+interne en externe projecten.
+    ●   Frontend Development: HTML/CSS/JS, Flash
+    ●   Backend Development: PHP, JAVA, MySQL
+
+SJB Media/​Flash, PHP developer
+2008-09 tot 2009-08, Hilversum
+Lead Developer & Architect van inhouse Flash-based CMS system: “Little
+Lemon”. Snel ontwikkelen van prototypes voor nieuwe concepten welke als
+vraag terecht kwam bij SJB-Media vanuit het media-landschap in Hilversum.
+    ●   Frontend Development: HTML/CSS/JS, Flash
+    ●   Backend Development: PHP, JAVA, SQL
+ㅡ
+Opleiding      HVA/​Hogere informatica (HBO)
+               2002 - 2009, Amsterdam
+
+
+               Oscar Romero Hoorn/​Havo
+               1997 – 2002
+
+ㅡ
+Vaardigheden       ●   Nederlands (uitmuntend). (Accent Amsterdams/West-Fries, ABN ook
+                       mogelijk)
+                   ●   Engels (nabij inheems)
+                   ●   Spaans (te weinig naar mijn smaak)
+                   ●   Project Lead/Manager(+9 jaar ervaring)
+                   ●   SCRUM/Agile/ Project-matig werken (+15 jaar ervaring)
+                   ●   PHP (+16 jaar ervaring)
+                   ●   Javascript (+16 jaar ervaring)
+                   ●   Actionscript / Flash (+15 jaar ervaring)
+                   ●   HTML/ CSS
+                   ●   Unix (Debian, Ubuntu, Centos)
+                   ●   FFMpeg, Carbon Coder, video codecs etc
+                   ●   (my)SQL, MSSQL, beheer, query optimalisatie etc
+                   ●   Arduino based systems & electronics
+                   ●   3D-modeling & printing (PLA, PETG & ABS)
+                   ●   Version management Git/ SVN (ook github, bitbucket management)
+                   ●   Elastic Search
+                   ●   Amazon AWS, cloud based computing
+                   ●   PHP: Vanilla, Zend, Laravel, Wordpress,Phalcon, Facebook Api,
+                       Braintree, Stripe
+                   ●   JS: Vanilla, jQuery, underscore, backbone, VueJS, React, Polymer,
+                       Angular
+                   ●   Bower, Gulp, Grunt, Jasmine, Karma
+                   ●   Build streets & proces automatisatie
+
+
+ㅡ
+               Extreem leergierig en ik schroom niet om onbekende technieken aan te
+Overig         pakken, mits er potentieel in zit. Ervaring in grote organisaties (zoals ING) en
+               zodoende in de manier van werken hierin. Denk hieraan SCRUM/Agile en
+               Kennisoverdracht over alle dimensies van de digitale organisatie van de klant.
+               Binnen grote SCRUM structuren ook wel squads & chapters genoemd. Ik ben
+               er echter ook niet vies van om mij zelfstandig diep in de stof te bijten. Ik kom
+               echter het best tot mijn recht als ik een aantal menselijke schakels heb, waar
+               ik in de diepgang mee kan sparren. Dit geldt op zowel business vlak (sparren
+               over het verbeteren van processen / toevoegen van ‘extra ervaring’ voor de
+               eindklant) met opdrachtgevers en eind-consumenten, maar ook op het
+               digitale vlak van zowel Frontend, Backend en Sysops gebied.
+
+               Door mijn vorige werkervaringen ben al in bezit van een VOG en heb ik ook
+               meerdere security scans ervaren.
+
+               Referenties bij aanvraag.
+
+               Miguel Fuentes
+               0031645476686
+               miguel@midgetgiraffe.com
+               http://fuentastic.com
+
