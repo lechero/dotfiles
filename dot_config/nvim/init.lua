@@ -792,7 +792,7 @@ require("lazy").setup({
 			-- add any options here
 			cli = {
 				mux = {
-					backend = "zellij",
+					backend = "tmux",
 					enabled = true,
 				},
 			},
@@ -944,7 +944,7 @@ require("lazy").setup({
 	require("fuentastic.plugins.neo-tree"),
 	require("fuentastic.plugins.alpha"),
 	require("fuentastic.plugins.codex"),
-	-- require("fuentastic.plugins.copilot"),
+	require("fuentastic.plugins.copilot"),
 	require("fuentastic.plugins.possession"),
 	require("fuentastic.plugins.obsidian"),
 	require("fuentastic.plugins.spectre"),
