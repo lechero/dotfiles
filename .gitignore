@@ -6,3 +6,5 @@ dot_config/nvim/lazy-lock.json
 **/plugged/**/*
 **/yankring_history*.txt
 .DS_Store
+scripts/agentx/__pycache__
+scripts/agentx/adapters/__pycache__

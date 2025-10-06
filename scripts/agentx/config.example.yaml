@@ -1,0 +1,48 @@
+routing:
+  overrides: {}
+  keywords:
+    sql: codex
+    terraform: cloud
+    kubernetes: cloud
+    k8s: cloud
+    design: gemini
+    architecture: gemini
+    pull request: copilot
+    review: copilot
+  weights:
+    codex: 0.6
+    gemini: 0.6
+    copilot: 0.7
+    cloud: 0.65
+adapters:
+  codex:
+    command_prefix:
+      - /home/enki/.local/bin/codex
+    prompt_via: stdin
+  gemini:
+    command_prefix:
+      - gemini
+    prompt_via: stdin
+  copilot:
+    command_prefix:
+      - gh
+      - copilot
+    prompt_via: stdin
+  cloud:
+    command_prefix:
+      - gcloud
+      - ai
+      - models
+      - predict
+    prompt_via: stdin
+logging:
+  level: INFO
+  output: stdout
+  file_path: ~/.agentx/agentx.log
+  format: json
+session:
+  history_path: ~/.agentx/history.jsonl
+features:
+  autocomplete: true
+  analytics_export: true
+  dry_run_default: false
