@@ -949,6 +949,7 @@ require("lazy").setup({
 	require("fuentastic.plugins.obsidian"),
 	require("fuentastic.plugins.spectre"),
 
+	require("fuentastic.plugins.diffview"),
 	require("fuentastic.plugins.harpoon"),
 	require("fuentastic.plugins.oil"),
 	require("fuentastic.plugins.yanky"),
