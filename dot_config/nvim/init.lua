@@ -795,6 +795,13 @@ require("lazy").setup({
 					backend = "tmux",
 					enabled = true,
 				},
+				tools = {
+					kilocode = {
+						cmd = { "kilocode" }, -- or { "kilo" } depending on your install
+						-- args = { ... },     -- optional
+						-- env = { ... },      -- optional
+					},
+				},
 			},
 		},
   -- stylua: ignore
@@ -846,6 +853,12 @@ require("lazy").setup({
         "<leader>ac",
         function() require("sidekick.cli").toggle({ name = "claude", focus = true }) end,
         desc = "Sidekick Claude Toggle",
+        mode = { "n", "v" },
+      },
+      {
+        "<leader>ak",
+        function() require("sidekick.cli").toggle({ name = "kilocode", focus = true }) end,
+        desc = "Sidekick Kilo Code Toggle",
         mode = { "n", "v" },
       },
     },
