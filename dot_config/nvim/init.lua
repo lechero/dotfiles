@@ -789,80 +789,212 @@ require("lazy").setup({
 	{
 		"folke/sidekick.nvim",
 		opts = {
-			-- add any options here
+			-- If you only want the CLI part, you can disable NES:
+			-- nes = { enabled = false },
+
 			cli = {
+				watch = true, -- auto-reload files changed by the AI tool
 				mux = {
 					backend = "tmux",
 					enabled = true,
+					-- optional niceties (supported in the plugin; tune to your taste):
+					-- create = "split",
+					-- split = { size = 0.33 },
 				},
 				tools = {
 					kilocode = {
-						cmd = { "kilocode" }, -- or { "kilo" } depending on your install
-						-- args = { ... },     -- optional
-						-- env = { ... },      -- optional
+						cmd = { "kilocode" }, -- or { "kilo" }
 					},
+					-- You can add more tools here the same way.
+				},
+
+				-- Add custom prompts you’ll actually use
+				prompts = {
+					refactor = "Refactor {this} to be simpler and more maintainable. Explain key decisions briefly.",
+					fix_tests = "Write or fix tests for {this}. If needed, explain how to run them.",
+					review_pr = "Review {file} for bugs, edge cases, and style issues. Suggest improvements.",
 				},
 			},
 		},
-  -- stylua: ignore
-    keys = {
-      {
-        "<tab>",
-        function()
-          -- if there is a next edit, jump to it, otherwise apply it if any
-          if not require("sidekick").nes_jump_or_apply() then
-            return "<Tab>" -- fallback to normal tab
-          end
-        end,
-        expr = true,
-        desc = "Goto/Apply Next Edit Suggestion",
-      },
-      {
-        "<leader>aa",
-        function() require("sidekick.cli").toggle() end,
-        mode = { "n", "v" },
-        desc = "Sidekick Toggle CLI",
-      },
-      {
-        "<leader>as",
-        function() require("sidekick.cli").select() end,
-        -- Or to select only installed tools:
-        -- require("sidekick.cli").select({ filter = { installed = true } })
-        desc = "Sidekick Select CLI",
-      },
-      {
-        "<leader>as",
-        function() require("sidekick.cli").send({ selection = true }) end,
-        mode = { "v" },
-        desc = "Sidekick Send Visual Selection",
-      },
-      {
-        "<leader>ap",
-        function() require("sidekick.cli").prompt() end,
-        mode = { "n", "v" },
-        desc = "Sidekick Select Prompt",
-      },
-      {
-        "<c-.>",
-        function() require("sidekick.cli").focus() end,
-        mode = { "n", "x", "i", "t" },
-        desc = "Sidekick Switch Focus",
-      },
-      -- Example of a keybinding to open Claude directly
-      {
-        "<leader>ac",
-        function() require("sidekick.cli").toggle({ name = "claude", focus = true }) end,
-        desc = "Sidekick Claude Toggle",
-        mode = { "n", "v" },
-      },
-      {
-        "<leader>ak",
-        function() require("sidekick.cli").toggle({ name = "kilocode", focus = true }) end,
-        desc = "Sidekick Kilo Code Toggle",
-        mode = { "n", "v" },
-      },
-    },
+		keys = {
+			-- NES: jump/apply suggestion (works great in normal mode; insert-mode needs integration with your cmp/snippets)
+			{
+				"<tab>",
+				function()
+					if not require("sidekick").nes_jump_or_apply() then
+						return "<Tab>"
+					end
+				end,
+				expr = true,
+				mode = { "n" },
+				desc = "Sidekick: goto/apply next edit suggestion",
+			},
+
+			-- CLI window
+			{
+				"<leader>aa",
+				function()
+					require("sidekick.cli").toggle()
+				end,
+				mode = { "n", "v" },
+				desc = "Sidekick: toggle CLI",
+			},
+			{
+				"<leader>as",
+				function()
+					require("sidekick.cli").select()
+				end,
+				desc = "Sidekick: select CLI tool",
+			},
+			{
+				"<leader>ad",
+				function()
+					require("sidekick.cli").close()
+				end,
+				desc = "Sidekick: detach/close CLI session",
+			},
+
+			-- Send context
+			{
+				"<leader>at",
+				function()
+					require("sidekick.cli").send({ msg = "{this}" })
+				end,
+				mode = { "n", "v" },
+				desc = "Sidekick: send this (context at cursor / range)",
+			},
+			{
+				"<leader>af",
+				function()
+					require("sidekick.cli").send({ msg = "{file}" })
+				end,
+				desc = "Sidekick: send file",
+			},
+			{
+				"<leader>av",
+				function()
+					require("sidekick.cli").send({ msg = "{selection}" })
+				end,
+				mode = { "v" },
+				desc = "Sidekick: send visual selection",
+			},
+
+			-- Prompt picker
+			{
+				"<leader>ap",
+				function()
+					require("sidekick.cli").prompt()
+				end,
+				mode = { "n", "v" },
+				desc = "Sidekick: insert prompt/context",
+			},
+
+			-- Focus switching
+			{
+				"<c-.>",
+				function()
+					require("sidekick.cli").focus()
+				end,
+				mode = { "n", "x", "i", "t" },
+				desc = "Sidekick: switch focus",
+			},
+
+			-- Direct tool toggles
+			{
+				"<leader>ac",
+				function()
+					require("sidekick.cli").toggle({ name = "claude", focus = true })
+				end,
+				mode = { "n", "v" },
+				desc = "Sidekick: Claude",
+			},
+			{
+				"<leader>ak",
+				function()
+					require("sidekick.cli").toggle({ name = "kilocode", focus = true })
+				end,
+				mode = { "n", "v" },
+				desc = "Sidekick: Kilo Code",
+			},
+		},
 	},
+	-- {
+	-- 	"folke/sidekick.nvim",
+	-- 	opts = {
+	-- 		-- add any options here
+	-- 		cli = {
+	-- 			mux = {
+	-- 				backend = "tmux",
+	-- 				enabled = true,
+	-- 			},
+	-- 			tools = {
+	-- 				kilocode = {
+	-- 					cmd = { "kilocode" }, -- or { "kilo" } depending on your install
+	-- 					-- args = { ... },     -- optional
+	-- 					-- env = { ... },      -- optional
+	-- 				},
+	-- 			},
+	-- 		},
+	-- 	},
+	--  -- stylua: ignore
+	--    keys = {
+	--      {
+	--        "<tab>",
+	--        function()
+	--          -- if there is a next edit, jump to it, otherwise apply it if any
+	--          if not require("sidekick").nes_jump_or_apply() then
+	--            return "<Tab>" -- fallback to normal tab
+	--          end
+	--        end,
+	--        expr = true,
+	--        desc = "Goto/Apply Next Edit Suggestion",
+	--      },
+	--      {
+	--        "<leader>aa",
+	--        function() require("sidekick.cli").toggle() end,
+	--        mode = { "n", "v" },
+	--        desc = "Sidekick Toggle CLI",
+	--      },
+	--      {
+	--        "<leader>as",
+	--        function() require("sidekick.cli").select() end,
+	--        -- Or to select only installed tools:
+	--        -- require("sidekick.cli").select({ filter = { installed = true } })
+	--        desc = "Sidekick Select CLI",
+	--      },
+	--      {
+	--        "<leader>as",
+	--        function() require("sidekick.cli").send({ selection = true }) end,
+	--        mode = { "v" },
+	--        desc = "Sidekick Send Visual Selection",
+	--      },
+	--      {
+	--        "<leader>ap",
+	--        function() require("sidekick.cli").prompt() end,
+	--        mode = { "n", "v" },
+	--        desc = "Sidekick Select Prompt",
+	--      },
+	--      {
+	--        "<c-.>",
+	--        function() require("sidekick.cli").focus() end,
+	--        mode = { "n", "x", "i", "t" },
+	--        desc = "Sidekick Switch Focus",
+	--      },
+	--      -- Example of a keybinding to open Claude directly
+	--      {
+	--        "<leader>ac",
+	--        function() require("sidekick.cli").toggle({ name = "claude", focus = true }) end,
+	--        desc = "Sidekick Claude Toggle",
+	--        mode = { "n", "v" },
+	--      },
+	--      {
+	--        "<leader>ak",
+	--        function() require("sidekick.cli").toggle({ name = "kilocode", focus = true }) end,
+	--        desc = "Sidekick Kilo Code Toggle",
+	--        mode = { "n", "v" },
+	--      },
+	--    },
+	-- },
 	{
 		"echasnovski/mini.nvim",
 		config = function()
