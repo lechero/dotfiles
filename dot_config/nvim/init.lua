@@ -805,6 +805,9 @@ require("lazy").setup({
 					kilocode = {
 						cmd = { "kilocode" }, -- or { "kilo" }
 					},
+					deepagents = {
+						cmd = { "deepagents" },
+					},
 					-- You can add more tools here the same way.
 				},
 
