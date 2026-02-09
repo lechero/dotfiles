@@ -1,6 +1,6 @@
 return {
 	"goolord/alpha-nvim",
-	-- dependencies = { 'echasnovski/mini.icons' },
+	event = "VimEnter",
 	dependencies = { "nvim-tree/nvim-web-devicons" },
 	config = function()
 		local status, alpha = pcall(require, "alpha")

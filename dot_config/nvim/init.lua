@@ -382,6 +382,7 @@ require("lazy").setup({
 				{ "<leader>w", group = "[W]orkspace" },
 				{ "<leader>t", group = "[T]oggle" },
 				{ "<leader>h", group = "Git [H]unk", mode = { "n", "v" } },
+				{ "<leader>o", group = "[O]bsidian" },
 			},
 		},
 	},
@@ -1082,54 +1083,10 @@ require("lazy").setup({
 	--  Here are some example plugins that I've included in the Kickstart repository.
 	--  Uncomment any of the lines below to enable them (you will need to restart nvim).
 	--
-	-- require 'kickstart.plugins.debug',
-	-- require 'kickstart.plugins.indent_line',
-	-- require 'kickstart.plugins.lint',
-	-- require 'kickstart.plugins.autopairs',
-	-- require 'fuentastic.plugins.tokyonight',
-
-	require("fuentastic.plugins.catpuccin"),
-	require("fuentastic.plugins.neo-tree"),
-	require("fuentastic.plugins.alpha"),
-	require("fuentastic.plugins.codex"),
-	require("fuentastic.plugins.copilot"),
-	require("fuentastic.plugins.possession"),
-	require("fuentastic.plugins.obsidian"),
-	require("fuentastic.plugins.spectre"),
-
-	require("fuentastic.plugins.diffview"),
-	require("fuentastic.plugins.harpoon"),
-	require("fuentastic.plugins.oil"),
-	require("fuentastic.plugins.yanky"),
-	require("fuentastic.plugins.vim-floaterm"),
-	-- require 'fuentastic.plugins.noice',
-	require("fuentastic.plugins.trouble"),
-	require("fuentastic.plugins.copilot-cmp"),
-	require("fuentastic.plugins.nvim-cmp"),
-	-- require("fuentastic.plugins.copilotchat"),
-
-	-- {
-	-- 	"zbirenbaum/copilot-cmp",
-	-- 	after = "copilot.lua",
-	-- 	opts = {
-	-- 		method = "getCompletionsCycling",
-	-- 	},
-	-- },
-
-	-- require 'fuentastic.winmove',
-
-	-- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
-
-	-- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
-	--    This is the easiest way to modularize your config.
-	--
-	--  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-	-- { import = 'custom.plugins' },
-	--
-	-- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
-	-- Or use telescope!
-	-- In normal mode type `<space>sh` then write `lazy.nvim-plugin`
-	-- you can continue same window with `<space>sr` which resumes last telescope search
+	-- NOTE: Automatically load all plugins from lua/fuentastic/plugins/*.lua
+	--  Each file should return a single table: return { "author/repo", ... }
+	--  See `:help lazy.nvim-🔌-plugin-spec` for more information
+	{ import = "fuentastic.plugins" },
 }, {
 	ui = {
 		-- If you are using a Nerd Font: set icons to an empty table which will use the
