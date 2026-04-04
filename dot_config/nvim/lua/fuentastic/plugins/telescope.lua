@@ -16,6 +16,9 @@ return {
   },
   config = function()
     require('telescope').setup({
+      preview = {
+        treesitter = false,
+      },
       extensions = {
         ['ui-select'] = {
           require('telescope.themes').get_dropdown(),
