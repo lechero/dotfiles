@@ -1,5 +1,4 @@
 # Neovim
-dot_config/nvim/lazy-lock.json
 **/autoload/
 **/autoload/**/*
 **/plugged/

@@ -107,6 +107,26 @@ Read through the `init.lua` file in your configuration folder for more
 information about extending and exploring Neovim. That also includes
 examples of adding popularly requested plugins.
 
+### Plugin upgrades in this repo
+
+This config intentionally tracks `lazy-lock.json` for reproducible plugin sets.
+When you change plugin specs, update plugins locally and commit the refreshed
+lockfile alongside the Lua changes.
+
+The Telescope spec is pinned to `0.2.0` on purpose. The older `0.1.x` line
+relies on preview Tree-sitter integration that no longer matches current
+Neovim and `nvim-treesitter` APIs.
+
+Typical maintenance flow:
+
+```vim
+:Lazy sync
+:Lazy update
+:TSUpdate
+```
+
+Use `:Lazy restore` to get back to the revisions recorded in `lazy-lock.json`.
+
 
 ### Getting Started
 
@@ -230,4 +250,3 @@ sudo dnf install -y gcc make git ripgrep fd-find unzip neovim
 sudo pacman -S --noconfirm --needed gcc make git ripgrep fd unzip neovim
 ```
 </details>
-

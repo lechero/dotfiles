@@ -10,6 +10,7 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 require('lazy').setup(require('fuentastic.config.plugins'), {
+  lockfile = vim.fn.stdpath('config') .. '/lazy-lock.json',
   ui = {
     icons = vim.g.have_nerd_font and {} or {
       cmd = '⌘',
