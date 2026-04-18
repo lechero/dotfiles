@@ -9,9 +9,9 @@ local function winmove(key)
   end
 
   if key:match('[jk]') then
-    vim.cmd.wincmd('v')
-  else
     vim.cmd.wincmd('s')
+  else
+    vim.cmd.wincmd('v')
   end
 
   vim.cmd.wincmd(key)
