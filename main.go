@@ -19,11 +19,13 @@ const usageText = `manage-disk — where your disk space goes, and the cleanups 
 Usage:
   manage-disk [flags]            open the interface
   manage-disk report [flags]     print the overview and the cleanup plan; changes nothing
+  manage-disk worktrees [--fetch] list worktrees with a verdict on each; changes nothing
 
 Flags:
   --dry-run           in the interface: show what a clean would do, delete nothing
   --include-private   also scan Desktop, Documents, Downloads… (macOS may ask for permission)
   -v                  report: list every item, not just the totals
+  --fetch             worktrees: git fetch each repo first, to judge against today's main
 `
 
 func main() {
@@ -31,6 +33,7 @@ func main() {
 	dryRun := fs.Bool("dry-run", false, "")
 	private := fs.Bool("include-private", false, "")
 	verbose := fs.Bool("v", false, "")
+	fetch := fs.Bool("fetch", false, "")
 	fs.Usage = func() { fmt.Fprint(os.Stderr, usageText) }
 
 	// Let flags sit before or after the subcommand.
@@ -59,6 +62,10 @@ func main() {
 		}
 	case "report":
 		if err := report(os.Stdout, env, *private, *verbose); err != nil {
+			fail(err)
+		}
+	case "worktrees":
+		if err := listWorktrees(os.Stdout, env, *fetch); err != nil {
 			fail(err)
 		}
 	case "help":
