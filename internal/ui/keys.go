@@ -9,7 +9,7 @@ import (
 // footer can never drift from what the handlers do.
 type keyMap struct {
 	Overview, Map, Explorer, Clean key.Binding
-	Worktrees                      key.Binding
+	Worktrees, Docker              key.Binding
 	NextTab, PrevTab               key.Binding
 	Help, Quit                     key.Binding
 	Rescan, Private                key.Binding
@@ -24,7 +24,8 @@ type keyMap struct {
 	Toggle, AllTier1, None, DryRun, Refresh, CleanNow, Details key.Binding
 	Yes, No, Stop, Done                                        key.Binding
 
-	WtAll, WtBranches, WtFetch, WtRecheck, WtRemove key.Binding
+	PickVerified, Recheck, Remove key.Binding // the worktrees and Docker tabs
+	WtBranches, WtFetch           key.Binding
 }
 
 func newKeyMap() keyMap {
@@ -37,6 +38,7 @@ func newKeyMap() keyMap {
 		Explorer:  b([]string{"3"}, "3", "explorer"),
 		Clean:     b([]string{"4"}, "4", "clean"),
 		Worktrees: b([]string{"5"}, "5", "worktrees"),
+		Docker:    b([]string{"6"}, "6", "docker"),
 		NextTab:   b([]string{"tab"}, "tab", "next tab"),
 		PrevTab:   b([]string{"shift+tab"}, "⇧tab", "previous tab"),
 		Help:      b([]string{"?"}, "?", "all keys"),
@@ -74,11 +76,11 @@ func newKeyMap() keyMap {
 		CleanNow: b([]string{"c"}, "c", "clean…"),
 		Details:  b([]string{"enter", "right", "l"}, "enter", "items"),
 
-		WtAll:      b([]string{"a"}, "a", "pick everything verified"),
-		WtBranches: b([]string{"b"}, "b", "merged branches too on/off"),
-		WtFetch:    b([]string{"f"}, "f", "fetch, then check"),
-		WtRecheck:  b([]string{"r"}, "r", "check again"),
-		WtRemove:   b([]string{"c"}, "c", "remove…"),
+		PickVerified: b([]string{"a"}, "a", "pick everything verified"),
+		Recheck:      b([]string{"r"}, "r", "check again"),
+		Remove:       b([]string{"c"}, "c", "remove…"),
+		WtBranches:   b([]string{"b"}, "b", "merged branches too on/off"),
+		WtFetch:      b([]string{"f"}, "f", "fetch, then check"),
 
 		Yes:  b([]string{"y", "enter"}, "y", "go ahead"),
 		No:   b([]string{"n", "esc", "q"}, "n/esc", "cancel"),
@@ -101,11 +103,13 @@ var _ help.KeyMap = keyHelp{}
 // helpKeys is what the footer shows for the screen in front of you.
 func (a *app) helpKeys() keyHelp {
 	k := a.keys
-	tabs := []key.Binding{k.Overview, k.Map, k.Explorer, k.Clean, k.Worktrees, k.NextTab}
+	tabs := []key.Binding{k.Overview, k.Map, k.Explorer, k.Clean, k.Worktrees, k.Docker, k.NextTab}
 	general := []key.Binding{k.Rescan, k.Private, k.Help, k.Quit}
 	switch {
 	case a.tab == tabWorktrees:
 		return a.wtHelpKeys(tabs)
+	case a.tab == tabDocker:
+		return a.dkHelpKeys(tabs)
 	case a.tab == tabOverview:
 		return keyHelp{
 			short: []key.Binding{k.Up, k.Down, k.SpotOpen, k.Map, k.Clean, k.Rescan, k.Help, k.Quit},

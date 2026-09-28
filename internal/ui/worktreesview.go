@@ -44,17 +44,7 @@ type wtAuditMsg struct {
 }
 
 func newWtState() wtState {
-	l := list.New(nil, wtDelegate{}, 0, 0)
-	l.SetShowTitle(false)
-	l.SetShowHelp(false)
-	l.SetFilteringEnabled(true)
-	l.SetStatusBarItemName("worktree", "worktrees")
-	l.DisableQuitKeybindings()
-	l.KeyMap.PrevPage = key.NewBinding(key.WithKeys("pgup"))
-	l.KeyMap.NextPage = key.NewBinding(key.WithKeys("pgdown"))
-	l.KeyMap.ShowFullHelp.SetEnabled(false)
-	l.KeyMap.CloseFullHelp.SetEnabled(false)
-	return wtState{list: l, chosen: map[string]bool{}, seen: map[string]bool{}}
+	return wtState{list: newPickList(wtDelegate{}, "worktree", "worktrees"), chosen: map[string]bool{}, seen: map[string]bool{}}
 }
 
 // auditWorktrees gathers the evidence in the background; with fetch, each
@@ -254,7 +244,7 @@ func (a *app) wtKey(msg tea.KeyMsg) tea.Cmd {
 		default:
 			a.flash = "Kept: " + strings.Join(e.w.Reasons, "; ")
 		}
-	case key.Matches(msg, k.WtAll):
+	case key.Matches(msg, k.PickVerified):
 		for _, x := range w.all {
 			if x.Verdict.Preselect() {
 				w.chosen[x.Path] = true
@@ -269,14 +259,14 @@ func (a *app) wtKey(msg tea.KeyMsg) tea.Cmd {
 	case key.Matches(msg, k.WtFetch):
 		a.flash = "Fetching origin for each repo, then checking again…"
 		return a.auditWorktrees(true)
-	case key.Matches(msg, k.WtRecheck):
+	case key.Matches(msg, k.Recheck):
 		a.env.ResetProcs()
 		return a.auditWorktrees(false)
 	case key.Matches(msg, k.Reveal):
 		if hasSel {
 			return reveal(e.w.Path)
 		}
-	case key.Matches(msg, k.WtRemove):
+	case key.Matches(msg, k.Remove):
 		return a.wtPrepare()
 	default:
 		var cmd tea.Cmd
@@ -339,10 +329,10 @@ func (a *app) wtHelpKeys(tabs []key.Binding) keyHelp {
 		return keyHelp{short: []key.Binding{k.Done}}
 	}
 	return keyHelp{
-		short: []key.Binding{k.Up, k.Down, k.Toggle, k.WtAll, k.WtBranches, k.WtRemove, k.Filter, k.Help},
+		short: []key.Binding{k.Up, k.Down, k.Toggle, k.PickVerified, k.WtBranches, k.Remove, k.Filter, k.Help},
 		full: [][]key.Binding{
-			{k.Up, k.Down, k.Toggle, k.WtAll, k.None, k.Filter},
-			{k.WtBranches, k.WtRecheck, k.WtFetch, k.Reveal, k.WtRemove},
+			{k.Up, k.Down, k.Toggle, k.PickVerified, k.None, k.Filter},
+			{k.WtBranches, k.Recheck, k.WtFetch, k.Reveal, k.Remove},
 			tabs, {k.Help, k.Quit},
 		},
 	}

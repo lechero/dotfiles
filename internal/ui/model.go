@@ -35,10 +35,11 @@ const (
 	tabExplorer
 	tabClean
 	tabWorktrees
+	tabDocker
 	tabCount
 )
 
-var tabNames = []string{"1 Overview", "2 Map", "3 Explorer", "4 Clean", "5 Worktrees"}
+var tabNames = []string{"1 Overview", "2 Map", "3 Explorer", "4 Clean", "5 Worktrees", "6 Docker"}
 
 // taskState is a cleanup task plus what discovery found for it.
 type taskState struct {
@@ -141,6 +142,7 @@ type app struct {
 	mp       mapState
 	cl       cleanState
 	wt       wtState
+	dk       dkState
 	run      runPanel
 }
 
@@ -168,6 +170,7 @@ func New(env *clean.Env, opts Options) Model {
 	a.mp.nested = true
 	a.cl = newCleanState()
 	a.wt = newWtState()
+	a.dk = newDkState()
 	a.run = newRunPanel()
 	return Model{a}
 }
@@ -177,12 +180,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return m, m.a.update(m
 func (m Model) View() string                            { return m.a.view() }
 
 func (a *app) init() tea.Cmd {
-	return tea.Batch(a.loadVolume(), a.loadHistory(), a.startScan(), a.discoverAll(), a.auditWorktrees(false))
+	return tea.Batch(a.loadVolume(), a.loadHistory(), a.startScan(), a.discoverAll(), a.auditWorktrees(false), a.auditDocker())
 }
 
 // busy reports whether anything on screen is still in motion.
 func (a *app) busy() bool {
-	if a.scanning || a.run.active || a.cl.mode == modePreparing || a.wt.loading {
+	if a.scanning || a.run.active || a.cl.mode == modePreparing || a.wt.loading || a.dk.loading {
 		return true
 	}
 	for _, ts := range a.tasks {
@@ -230,14 +233,19 @@ func (a *app) update(msg tea.Msg) tea.Cmd {
 		return cmd
 	case list.FilterMatchesMsg: // lists filter in the background; the one on screen asked
 		var cmd tea.Cmd
-		if a.tab == tabWorktrees {
+		switch a.tab {
+		case tabWorktrees:
 			a.wt.list, cmd = a.wt.list.Update(msg)
-		} else {
+		case tabDocker:
+			a.dk.list, cmd = a.dk.list.Update(msg)
+		default:
 			a.cl.items, cmd = a.cl.items.Update(msg)
 		}
 		return cmd
 	case wtAuditMsg:
 		return a.onWorktreeAudit(msg)
+	case dkAuditMsg:
+		return a.onDockerAudit(msg)
 	case tickMsg:
 		if a.scanning || a.run.active {
 			return tick()
@@ -288,6 +296,22 @@ func (a *app) typing() bool {
 		return a.cl.mode == modeDetail && a.cl.items.SettingFilter()
 	case tabWorktrees:
 		return a.wt.mode == wtList && a.wt.list.SettingFilter()
+	case tabDocker:
+		return a.dk.mode == dkList && a.dk.list.SettingFilter()
+	}
+	return false
+}
+
+// modal reports whether the tab in front is in a flow (confirming, running…)
+// that takes every key and keeps you on it.
+func (a *app) modal() bool {
+	switch a.tab {
+	case tabClean:
+		return a.cl.modal()
+	case tabWorktrees:
+		return a.wt.mode != wtList
+	case tabDocker:
+		return a.dk.mode != dkList
 	}
 	return false
 }
@@ -296,16 +320,14 @@ func (a *app) onKey(msg tea.KeyMsg) tea.Cmd {
 	a.flash = ""
 	k := a.keys
 	switch {
-	case a.tab == tabClean && a.cl.modal():
-		return a.cleanKey(msg)
-	case a.tab == tabWorktrees && a.wt.mode != wtList:
-		return a.wtKey(msg)
-	case a.typing():
+	case a.modal() || a.typing():
 		switch a.tab {
 		case tabExplorer:
 			return a.explorerKey(msg)
 		case tabWorktrees:
 			return a.wtKey(msg)
+		case tabDocker:
+			return a.dkKey(msg)
 		}
 		return a.cleanKey(msg)
 	case key.Matches(msg, k.Quit):
@@ -331,13 +353,16 @@ func (a *app) onKey(msg tea.KeyMsg) tea.Cmd {
 	case key.Matches(msg, k.Worktrees):
 		a.setTab(tabWorktrees)
 		return nil
+	case key.Matches(msg, k.Docker):
+		a.setTab(tabDocker)
+		return nil
 	case key.Matches(msg, k.NextTab):
 		a.setTab((a.tab + 1) % tabCount)
 		return nil
 	case key.Matches(msg, k.PrevTab):
 		a.setTab((a.tab + tabCount - 1) % tabCount)
 		return nil
-	case a.tab == tabClean || a.tab == tabWorktrees:
+	case a.tab == tabClean || a.tab == tabWorktrees || a.tab == tabDocker:
 		// these tabs give r and p their own meaning
 	case key.Matches(msg, k.Rescan):
 		return tea.Batch(a.startScan(), a.discoverAll())
@@ -357,6 +382,8 @@ func (a *app) onKey(msg tea.KeyMsg) tea.Cmd {
 		return a.explorerKey(msg)
 	case tabWorktrees:
 		return a.wtKey(msg)
+	case tabDocker:
+		return a.dkKey(msg)
 	default:
 		return a.cleanKey(msg)
 	}
@@ -382,7 +409,7 @@ func (a *app) setTab(t int) {
 func (a *app) onMouse(msg tea.MouseMsg) tea.Cmd {
 	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft && msg.Y == 1 {
 		for _, h := range a.tabHits {
-			if msg.X >= h.x0 && msg.X < h.x1 && !(a.tab == tabClean && a.cl.modal()) && !(a.tab == tabWorktrees && a.wt.mode != wtList) {
+			if msg.X >= h.x0 && msg.X < h.x1 && !a.modal() {
 				a.setTab(h.tab)
 				return nil
 			}
@@ -397,6 +424,8 @@ func (a *app) onMouse(msg tea.MouseMsg) tea.Cmd {
 		return a.cleanMouse(msg)
 	case tabWorktrees:
 		return a.wtMouse(msg)
+	case tabDocker:
+		return a.dkMouse(msg)
 	default:
 		return a.overviewMouse(msg)
 	}
@@ -560,6 +589,8 @@ func (a *app) view() string {
 		body = a.explorerView(bodyH)
 	case tabWorktrees:
 		body = a.worktreesView(bodyH)
+	case tabDocker:
+		body = a.dockerView(bodyH)
 	default:
 		body = a.cleanView(bodyH)
 	}

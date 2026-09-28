@@ -18,8 +18,8 @@ import (
 	"manage-disk/internal/scan"
 )
 
-// runPanel is the one run in flight — a clean or a worktree removal — shown
-// by the tab that started it.
+// runPanel is the one run in flight — a clean, a worktree or Docker removal —
+// shown by the tab that started it.
 type runPanel struct {
 	owner   int
 	active  bool
@@ -166,6 +166,9 @@ func (a *app) onRunDone(sum clean.Summary) tea.Cmd {
 	case tabWorktrees:
 		a.wt.mode = wtDone
 		cmds = append(cmds, a.auditWorktrees(false))
+	case tabDocker:
+		a.dk.mode = dkDone
+		cmds = append(cmds, a.auditDocker())
 	}
 	return tea.Batch(cmds...)
 }
@@ -239,8 +242,12 @@ func (a *app) doneView(h int) string {
 		b.WriteString(fmt.Sprintf("Would handle %s, about %s. Nothing was changed.\n", plural(len(s.Cleaned), "item"), human.Bytes(s.Estimated)))
 	} else {
 		b.WriteString(sBold.Render("Done in "+took) + "\n")
-		b.WriteString(fmt.Sprintf("Free space %s → %s  %s\n", human.Bytes(s.FreeBefore), human.Bytes(s.FreeAfter),
-			sGreen.Render("(+"+human.Bytes(max(0, s.Freed()))+")")))
+		if r.owner == tabDocker { // what changed is inside Docker's VM; the Mac sees it later
+			b.WriteString(a.dkFreedLine(s.DryRun) + "\n")
+		} else {
+			b.WriteString(fmt.Sprintf("Free space %s → %s  %s\n", human.Bytes(s.FreeBefore), human.Bytes(s.FreeAfter),
+				sGreen.Render("(+"+human.Bytes(max(0, s.Freed()))+")")))
+		}
 	}
 	verb := "done"
 	if s.DryRun {
@@ -257,7 +264,7 @@ func (a *app) doneView(h int) string {
 	if s.Cancelled {
 		b.WriteString(sYellow.Render("Stopped early, as you asked.") + "\n")
 	}
-	if !s.DryRun && s.Freed() < s.Estimated/2 {
+	if !s.DryRun && s.Freed() < s.Estimated/2 && r.owner != tabDocker {
 		b.WriteString(sDim.Render("Less space came back than measured: pnpm's cloned files share blocks, and Docker returns space a few minutes later.") + "\n")
 	}
 	if s.LogPath != "" {

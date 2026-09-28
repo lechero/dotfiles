@@ -33,17 +33,23 @@ type cleanState struct {
 }
 
 func newCleanState() cleanState {
-	l := list.New(nil, itemDelegate{}, 0, 0)
+	return cleanState{items: newPickList(itemDelegate{}, "item", "items")}
+}
+
+// newPickList is a filterable list whose keys leave q, ? and the tab keys to
+// the app.
+func newPickList(d list.ItemDelegate, singular, plural string) list.Model {
+	l := list.New(nil, d, 0, 0)
 	l.SetShowTitle(false)
 	l.SetShowHelp(false)
 	l.SetFilteringEnabled(true)
-	l.SetStatusBarItemName("item", "items")
+	l.SetStatusBarItemName(singular, plural)
 	l.DisableQuitKeybindings()
 	l.KeyMap.PrevPage = key.NewBinding(key.WithKeys("pgup"))
 	l.KeyMap.NextPage = key.NewBinding(key.WithKeys("pgdown"))
 	l.KeyMap.ShowFullHelp.SetEnabled(false)
 	l.KeyMap.CloseFullHelp.SetEnabled(false)
-	return cleanState{items: l}
+	return l
 }
 
 // modal modes take every key.
