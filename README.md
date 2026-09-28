@@ -8,6 +8,7 @@ task dry        # build and open it with deletion switched off
 task run        # build and open it for real
 task report     # print the overview and cleanup plan; changes nothing
 task worktrees  # list every worktree with a verdict; changes nothing
+task docker     # Docker's own disk, and a verdict on everything in it; changes nothing
 task install    # copy the binary to ~/.local/bin
 ```
 
@@ -45,6 +46,13 @@ decided. `space` picks, `a` picks everything verified, `c` removes (after a
 fresh check and a confirm), and `b` also deletes the branches of merged work.
 `f` fetches every repo first, so "merged" is judged against today's main.
 
+**6 Docker.** How full Docker's own disk is, inside its VM, which is what a
+build runs out of. Below it, every image, container, volume and slice of build
+cache has a verdict and the evidence behind it, most removable first and
+largest first. See [Docker](#docker) for how verdicts are decided. `space`
+picks, `a` picks everything verified, and `c` removes after a fresh look and
+a confirm. The header shows what your picks would leave free.
+
 `?` shows every key for the screen you're on, and tabs are clickable. With the
 mouse on, most terminals need ⌥ (iTerm: ⌥, Terminal.app: fn) held down to
 select text.
@@ -68,7 +76,7 @@ switch them on.
 
 | Task | What |
 |---|---|
-| Docker build cache | `builder prune` → `image prune` → `builder prune`. **Never volumes**, because dev databases live there |
+| Docker build cache | `builder prune` → `image prune` → `builder prune`. **Never volumes**, because dev databases live there. The [Docker](#docker) tab picks resource by resource |
 | pnpm stores | `~/Library/pnpm/store/v*` |
 | node_modules in worktrees | every linked git worktree of the repos under `~/projects` (`.claude/worktrees`, `.worktrees`, `~/.codex/worktrees`) |
 | Gradle & CocoaPods caches | `~/.gradle/caches`, `~/Library/Caches/CocoaPods` |
@@ -112,6 +120,49 @@ stay unless you press `b`, and even then only the branches of **merged**
 worktrees are deleted. Git never prompts: a fetch whose SSH key wants a
 passphrase fails instead of asking.
 
+## Docker
+
+Docker Desktop keeps images, containers, volumes and build cache on one Linux
+filesystem inside its VM. That filesystem has its own size limit (Settings →
+Resources → Virtual disk limit), so a build can fail with plenty of room left
+on the Mac. The tab measures it the way a build would see it: `df` in a
+throwaway container, whose `/` reports the filesystem Docker keeps everything
+on. That needs no `--privileged`. It uses an `alpine` or `busybox` image
+already on the machine and never pulls one. Without either, it says so.
+
+| Verdict | When | Picked for you |
+|---|---|---|
+| **unused** | nothing refers to it: an untagged image, build cache no build used for a week, an empty volume | yes |
+| **orphan** | a stopped container whose compose project ran from a folder that's gone, such as a removed worktree | yes |
+| **old** | nothing runs it for 30+ days: a container stopped that long, or a pulled image created that long ago | yes |
+| **review** | removable, but it looks wanted: stopped recently, created recently, recent build cache, or built here and never pushed (only a rebuild brings it back) | no |
+| **data** | a volume holding anything. Its data exists nowhere else | never |
+| **in use** | a running container, or an image one runs or a volume one mounts. It can't be picked | — |
+
+Where the evidence comes from:
+
+- **Docker:** `docker system df -v` for what each resource frees (an image's
+  unique size, not the layers it shares), and `inspect` for tags, registry
+  digests, states, mounts and compose labels.
+- **Compose labels:** every compose container records the folder it was
+  started from. A volume outlives its containers, so manage-disk remembers
+  those folders in `compose-projects.json`. It also looks under `~/projects`
+  for compose files that would start a project of that name.
+
+**What must go first comes along.** Docker won't remove an image a stopped
+container was made from, or a volume one mounts. Picking the image or volume
+picks those containers too, and unpicking a container unpicks what needed
+it. A removal goes containers → images → volumes → build cache. Build cache
+goes last because images built here share their layers with it: removing
+such an image frees little until the cache is pruned too, and the confirm
+dialog says so when you haven't picked it.
+
+**Nothing is forced.** `docker rm`, `rmi` and `volume rm` run without `-f`.
+Docker itself refuses a container that started, or an image or volume a
+container began using, after the check. Everything is checked again just
+before the confirm dialog. The dialog warns in red when a volume's data is
+about to go, and the summary shows Docker's disk before and after.
+
 ## Safety
 
 - **It re-checks just before cleaning.** When you press `c`, it takes a fresh
@@ -133,7 +184,7 @@ passphrase fails instead of asking.
   included), iCloud and CloudStorage. A folder that doesn't answer within 15s
   (a pending dialog) is skipped, so a scan never hangs.
 - **Dry run.** `--dry-run`, or `d` in the Clean tab, runs the whole flow and
-  deletes nothing.
+  deletes nothing. That covers the Worktrees and Docker tabs too.
 - **Logs and history.** Every run appends to
   `~/Library/Logs/manage-disk/<date>.log`. Real runs are also recorded in
   `~/Library/Application Support/manage-disk/history.jsonl`, which feeds the
@@ -156,10 +207,13 @@ minutes after a prune. The summary shows the real change in free space.
 
 ```
 main.go, report.go      entry point, the `report` command
+*_cmd.go                the `worktrees` and `docker` commands
 internal/scan           parallel walker, tree, categories, hotspots, privacy rules
 internal/clean          task catalogue, process snapshot, guard, runner, history
+internal/worktrees      judges each worktree from git, GitHub and process evidence
+internal/docker         judges each image, container, volume and build cache slice
 internal/treemap        squarified treemap layout, snapped to terminal cells
-internal/ui             Bubble Tea model: overview, map, explorer, clean tab
+internal/ui             Bubble Tea model: overview, map, explorer, clean, worktrees, docker
 internal/human          sizes, counts and times for people
 ```
 
@@ -169,6 +223,7 @@ spots, `list` for a task's items, `textinput` for the explorer filter,
 `progress` for the disk gauge, scan and clean bars, `viewport` for the run
 log, `stopwatch` for its timer, and `spinner` while anything is measuring.
 
-The interface also keeps two small files next to the run history in
+The interface also keeps small files next to the run history in
 `~/Library/Application Support/manage-disk`: the last scan's file count, which
-gives the next scan a real progress bar, and free-space samples for the trend.
+gives the next scan a real progress bar, free-space samples for the trend, and
+the folders compose projects ran from.
