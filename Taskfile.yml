@@ -49,6 +49,12 @@ tasks:
     cmds:
       - ./{{.BIN}} worktrees {{.CLI_ARGS}}
 
+  docker:
+    desc: "Docker's own disk, and a verdict on every image, container and volume, changing nothing"
+    deps: [build]
+    cmds:
+      - ./{{.BIN}} docker {{.CLI_ARGS}}
+
   test:
     desc: Vet, then run every test with the race detector
     cmds:

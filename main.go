@@ -20,6 +20,7 @@ Usage:
   manage-disk [flags]            open the interface
   manage-disk report [flags]     print the overview and the cleanup plan; changes nothing
   manage-disk worktrees [--fetch] list worktrees with a verdict on each; changes nothing
+  manage-disk docker             Docker's disk, and a verdict on each image, container and volume; changes nothing
 
 Flags:
   --dry-run           in the interface: show what a clean would do, delete nothing
@@ -66,6 +67,10 @@ func main() {
 		}
 	case "worktrees":
 		if err := listWorktrees(os.Stdout, env, *fetch); err != nil {
+			fail(err)
+		}
+	case "docker":
+		if err := listDocker(os.Stdout, env); err != nil {
 			fail(err)
 		}
 	case "help":
