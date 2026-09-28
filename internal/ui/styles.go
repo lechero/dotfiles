@@ -34,6 +34,14 @@ var (
 
 var eighths = []string{"", "▏", "▎", "▍", "▌", "▋", "▊", "▉"}
 
+// barStyle colours an explorer bar like that entry's block on the map.
+func barStyle(hue int) lipgloss.Style {
+	if hue < 0 {
+		return sDim
+	}
+	return lipgloss.NewStyle().Foreground(shadeFor(hue).hi)
+}
+
 // bar draws frac (0–1) of width cells, with eighth-cell precision.
 func bar(frac float64, width int, style lipgloss.Style) string {
 	if width <= 0 {
