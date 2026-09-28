@@ -53,7 +53,7 @@ func main() {
 
 	switch cmd {
 	case "":
-		p := tea.NewProgram(ui.New(env, ui.Options{DryRun: *dryRun, IncludePrivate: *private}), tea.WithAltScreen())
+		p := tea.NewProgram(ui.New(env, ui.Options{DryRun: *dryRun, IncludePrivate: *private}), tea.WithAltScreen(), tea.WithMouseCellMotion())
 		if _, err := p.Run(); err != nil {
 			fail(err)
 		}

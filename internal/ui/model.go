@@ -8,7 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/progress"
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/stopwatch"
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -25,9 +31,13 @@ type Options struct {
 
 const (
 	tabOverview = iota
+	tabMap
 	tabExplorer
 	tabClean
+	tabCount
 )
+
+var tabNames = []string{"1 Overview", "2 Map", "3 Explorer", "4 Clean"}
 
 // taskState is a cleanup task plus what discovery found for it.
 type taskState struct {
@@ -62,8 +72,11 @@ func (t *taskState) blocked() int {
 }
 
 type (
-	tickMsg     time.Time
-	volMsg      struct{ vol scan.Volume }
+	tickMsg time.Time
+	volMsg  struct {
+		vol   scan.Volume
+		trend []freeSample
+	}
 	historyMsg  struct{ last *clean.HistoryEntry }
 	scanDoneMsg struct {
 		gen int
@@ -84,36 +97,48 @@ type (
 	revealMsg struct{ err error }
 )
 
+type tabHit struct{ x0, x1, tab int }
+
 type app struct {
 	env  *clean.Env
 	home string
 	opts Options
 	w, h int
 	tab  int
-	help bool
 
-	flash string
+	keys    keyMap
+	helpBar help.Model
+	flash   string
+	headerH int
+	tabHits []tabHit
 
-	vol   scan.Volume
-	volOK bool
-	last  *clean.HistoryEntry
+	vol      scan.Volume
+	volOK    bool
+	gauge    progress.Model
+	trend    []freeSample
+	last     *clean.HistoryEntry
+	lastScan scanStats
 
 	scanning   bool
 	scanGen    int
 	scanCancel context.CancelFunc
 	prog       *scan.Progress
 	scanStart  time.Time
+	scanBar    progress.Model
 	res        *scan.Result
 	scanErr    error
 	cats       []scan.Category
 	hot        []*scan.Node
+	spots      table.Model
 
 	discGen int
 	tasks   []*taskState
 
-	spin spinner.Model
-	exp  explorerState
-	cl   cleanState
+	spin     spinner.Model
+	spinning bool
+	exp      explorerState
+	mp       mapState
+	cl       cleanState
 }
 
 // Model is the Bubble Tea model. It wraps a pointer so helpers can mutate state.
@@ -122,15 +147,23 @@ type Model struct{ a *app }
 // New builds the interface for env.
 func New(env *clean.Env, opts Options) Model {
 	a := &app{
-		env:  env,
-		home: env.Home,
-		opts: opts,
-		spin: spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(sAccent)),
+		env:      env,
+		home:     env.Home,
+		opts:     opts,
+		keys:     newKeyMap(),
+		helpBar:  help.New(),
+		spin:     spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(sAccent)),
+		gauge:    progress.New(progress.WithScaledGradient("#4ADE80", "#F87171"), progress.WithoutPercentage()),
+		scanBar:  progress.New(progress.WithDefaultGradient()),
+		lastScan: loadScanStats(env.StateDir),
+		spots:    newSpotsTable(),
 	}
 	for _, t := range clean.Catalog() {
 		a.tasks = append(a.tasks, &taskState{task: t, enabled: t.Tier == clean.Tier1})
 	}
-	a.exp.path = env.Home
+	a.exp = newExplorerState(env.Home)
+	a.mp.nested = true
+	a.cl = newCleanState()
 	return Model{a}
 }
 
@@ -139,7 +172,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return m, m.a.update(m
 func (m Model) View() string                            { return m.a.view() }
 
 func (a *app) init() tea.Cmd {
-	return tea.Batch(a.spin.Tick, a.loadVolume(), a.loadHistory(), a.startScan(), a.discoverAll())
+	return tea.Batch(a.loadVolume(), a.loadHistory(), a.startScan(), a.discoverAll())
+}
+
+// busy reports whether anything on screen is still in motion.
+func (a *app) busy() bool {
+	if a.scanning || a.cl.mode == modePreparing || a.cl.mode == modeRunning {
+		return true
+	}
+	for _, ts := range a.tasks {
+		if ts.loading || ts.waiting {
+			return true
+		}
+	}
+	return false
+}
+
+// wake restarts the spinner when work begins. A second tick chain is
+// harmless: the spinner drops ticks carrying an old tag.
+func (a *app) wake() tea.Cmd {
+	if a.spinning {
+		return nil
+	}
+	a.spinning = true
+	return a.spin.Tick
 }
 
 func tick() tea.Cmd {
@@ -150,9 +206,26 @@ func (a *app) update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		a.w, a.h = msg.Width, msg.Height
+		a.helpBar.Width = msg.Width
 	case spinner.TickMsg:
+		if !a.busy() { // nothing moving: let the spinner sleep instead of redrawing ten times a second
+			a.spinning = false
+			return nil
+		}
 		var cmd tea.Cmd
 		a.spin, cmd = a.spin.Update(msg)
+		return cmd
+	case progress.FrameMsg:
+		m, cmd := a.cl.bar.Update(msg)
+		a.cl.bar = m.(progress.Model)
+		return cmd
+	case stopwatch.TickMsg, stopwatch.StartStopMsg, stopwatch.ResetMsg:
+		var cmd tea.Cmd
+		a.cl.watch, cmd = a.cl.watch.Update(msg)
+		return cmd
+	case list.FilterMatchesMsg: // the item list filters in the background
+		var cmd tea.Cmd
+		a.cl.items, cmd = a.cl.items.Update(msg)
 		return cmd
 	case tickMsg:
 		if a.scanning || a.cl.mode == modeRunning {
@@ -160,6 +233,9 @@ func (a *app) update(msg tea.Msg) tea.Cmd {
 		}
 	case volMsg:
 		a.vol, a.volOK = msg.vol, true
+		if msg.trend != nil {
+			a.trend = msg.trend
+		}
 	case historyMsg:
 		a.last = msg.last
 	case scanDoneMsg:
@@ -183,61 +259,130 @@ func (a *app) update(msg tea.Msg) tea.Cmd {
 		if msg.err != nil {
 			a.flash = "couldn't reveal in Finder: " + msg.err.Error()
 		}
+	case tea.MouseMsg:
+		return a.onMouse(msg)
 	case tea.KeyMsg:
-		return a.onKey(msg.String())
+		return a.onKey(msg)
 	}
 	return nil
 }
 
-func (a *app) onKey(key string) tea.Cmd {
-	a.flash = ""
-	if a.tab == tabClean && a.cl.modal() {
-		return a.cleanKey(key)
+// typing reports whether a text field has the keyboard, so letters go to it
+// instead of switching tabs or quitting.
+func (a *app) typing() bool {
+	switch a.tab {
+	case tabExplorer:
+		return a.exp.filtering
+	case tabClean:
+		return a.cl.mode == modeDetail && a.cl.items.SettingFilter()
 	}
-	switch key {
-	case "ctrl+c", "q":
+	return false
+}
+
+func (a *app) onKey(msg tea.KeyMsg) tea.Cmd {
+	a.flash = ""
+	k := a.keys
+	switch {
+	case a.tab == tabClean && a.cl.modal():
+		return a.cleanKey(msg)
+	case a.typing():
+		if a.tab == tabExplorer {
+			return a.explorerKey(msg)
+		}
+		return a.cleanKey(msg)
+	case key.Matches(msg, k.Quit):
 		if a.scanCancel != nil {
 			a.scanCancel()
 		}
 		return tea.Quit
-	case "?":
-		a.help = !a.help
+	case key.Matches(msg, k.Help):
+		a.helpBar.ShowAll = !a.helpBar.ShowAll
 		return nil
-	case "1":
-		a.tab = tabOverview
+	case key.Matches(msg, k.Overview):
+		a.setTab(tabOverview)
 		return nil
-	case "2":
-		a.tab = tabExplorer
+	case key.Matches(msg, k.Map):
+		a.setTab(tabMap)
 		return nil
-	case "3":
-		a.tab = tabClean
+	case key.Matches(msg, k.Explorer):
+		a.setTab(tabExplorer)
 		return nil
-	case "tab":
-		a.tab = (a.tab + 1) % 3
+	case key.Matches(msg, k.Clean):
+		a.setTab(tabClean)
 		return nil
-	case "shift+tab":
-		a.tab = (a.tab + 2) % 3
+	case key.Matches(msg, k.NextTab):
+		a.setTab((a.tab + 1) % tabCount)
 		return nil
+	case key.Matches(msg, k.PrevTab):
+		a.setTab((a.tab + tabCount - 1) % tabCount)
+		return nil
+	case a.tab != tabClean && key.Matches(msg, k.Rescan):
+		return tea.Batch(a.startScan(), a.discoverAll())
+	case a.tab != tabClean && key.Matches(msg, k.Private):
+		a.opts.IncludePrivate = !a.opts.IncludePrivate
+		if a.opts.IncludePrivate {
+			a.flash = "Rescanning with Desktop, Documents, Downloads, app containers… — macOS may ask for permission"
+		}
+		return a.startScan()
 	}
-	a.help = false
 	switch a.tab {
 	case tabOverview:
-		return a.overviewKey(key)
+		return a.overviewKey(msg)
+	case tabMap:
+		return a.mapKey(msg)
 	case tabExplorer:
-		return a.explorerKey(key)
+		return a.explorerKey(msg)
 	default:
-		return a.cleanKey(key)
+		return a.cleanKey(msg)
+	}
+}
+
+// setTab switches tabs; the map and the explorer hand over what is selected,
+// since both look at the same folder.
+func (a *app) setTab(t int) {
+	if a.res != nil {
+		n := a.exp.current(a.res.Root)
+		switch {
+		case a.tab == tabExplorer && t == tabMap:
+			if rows := a.exp.rows(n); a.exp.cursor < len(rows) {
+				a.mp.sel = rows[a.exp.cursor].Name
+			}
+		case a.tab == tabMap && t == tabExplorer:
+			a.exp.selectName(n, a.mp.sel)
+		}
+	}
+	a.tab = t
+}
+
+func (a *app) onMouse(msg tea.MouseMsg) tea.Cmd {
+	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft && msg.Y == 1 {
+		for _, h := range a.tabHits {
+			if msg.X >= h.x0 && msg.X < h.x1 && !(a.tab == tabClean && a.cl.modal()) {
+				a.setTab(h.tab)
+				return nil
+			}
+		}
+	}
+	switch a.tab {
+	case tabMap:
+		return a.mapMouse(msg)
+	case tabExplorer:
+		return a.explorerMouse(msg)
+	case tabClean:
+		return a.cleanMouse(msg)
+	default:
+		return a.overviewMouse(msg)
 	}
 }
 
 func (a *app) loadVolume() tea.Cmd {
-	home := a.home
+	home, dir := a.home, a.env.StateDir
 	return func() tea.Msg {
 		v, err := scan.VolumeOf(home)
 		if err != nil {
 			return nil
 		}
-		return volMsg{v}
+		return volMsg{vol: v, trend: recordFree(dir, v.Free, time.Now())}
 	}
 }
 
@@ -265,7 +410,7 @@ func (a *app) startScan() tea.Cmd {
 	a.scanning = true
 	a.scanStart = time.Now()
 	home, opts, prog := a.home, a.scanOptions(), a.prog
-	return tea.Batch(tick(), func() tea.Msg {
+	return tea.Batch(tick(), a.wake(), func() tea.Msg {
 		res, err := scan.Scan(ctx, home, opts, prog)
 		return scanDoneMsg{gen: gen, res: res, err: err}
 	})
@@ -283,8 +428,11 @@ func (a *app) onScanDone(msg scanDoneMsg) tea.Cmd {
 	a.res, a.scanErr = msg.res, nil
 	a.env.SetTree(msg.res.Root)
 	a.refreshInsights()
+	stats := scanStats{Files: msg.res.Root.Files, Bytes: msg.res.Root.Size, Took: msg.res.Took, At: time.Now()}
+	a.lastScan = stats
+	dir := a.env.StateDir
+	cmds := []tea.Cmd{func() tea.Msg { saveScanStats(dir, stats); return nil }}
 	// Heavy tasks size their items off the tree, so they start now.
-	var cmds []tea.Cmd
 	for i, ts := range a.tasks {
 		if ts.task.Heavy {
 			cmds = append(cmds, a.discover(i))
@@ -299,13 +447,14 @@ func (a *app) refreshInsights() {
 	}
 	a.cats = scan.Categories(a.res.Root)
 	a.hot = scan.Hotspots(a.res.Root, 15, 256<<20)
+	a.refreshSpots()
 }
 
 // discoverAll re-finds every task's items with a fresh process snapshot.
 func (a *app) discoverAll() tea.Cmd {
 	a.env.ResetProcs()
 	a.discGen++
-	var cmds []tea.Cmd
+	cmds := []tea.Cmd{a.wake()}
 	for i, ts := range a.tasks {
 		if ts.task.Heavy && a.res == nil {
 			ts.waiting = true
@@ -342,7 +491,9 @@ func (a *app) onDiscover(msg discoverMsg) tea.Cmd {
 		}
 	}
 	ts.loading, ts.items, ts.err = false, msg.items, msg.err
-	a.cl.clampDetail(a)
+	if a.cl.mode == modeDetail && a.cl.task == msg.idx {
+		a.cl.fillItems(a)
+	}
 	if a.cl.mode == modePreparing {
 		return a.maybeConfirm()
 	}
@@ -370,14 +521,15 @@ func (a *app) view() string {
 	}
 	header := a.headerView()
 	footer := a.footerView()
-	bodyH := max(3, a.h-lipgloss.Height(header)-lipgloss.Height(footer))
+	a.headerH = lipgloss.Height(header)
+	bodyH := max(3, a.h-a.headerH-lipgloss.Height(footer))
 	var body string
-	switch {
-	case a.help:
-		body = a.helpView()
-	case a.tab == tabOverview:
+	switch a.tab {
+	case tabOverview:
 		body = a.overviewView(bodyH)
-	case a.tab == tabExplorer:
+	case tabMap:
+		body = a.mapView(bodyH)
+	case tabExplorer:
 		body = a.explorerView(bodyH)
 	default:
 		body = a.cleanView(bodyH)
@@ -388,25 +540,30 @@ func (a *app) view() string {
 
 func (a *app) headerView() string {
 	line1 := sTitle.Render("manage-disk")
-	if a.volOK {
-		barW := min(40, max(10, a.w/4))
-		line1 += "  " + volumeBar(a.vol.Used(), a.vol.Total, barW) + "  " +
-			sBold.Render(human.Bytes(a.vol.Free)) + sDim.Render(" free of "+human.Bytes(a.vol.Total))
+	if a.volOK && a.vol.Total > 0 {
+		a.gauge.Width = min(40, max(10, a.w/4))
+		used := float64(a.vol.Used()) / float64(a.vol.Total)
+		line1 += "  " + a.gauge.ViewAs(used) + "  " + sBold.Render(human.Bytes(a.vol.Free)) +
+			sDim.Render(" free of "+human.Bytes(a.vol.Total))
 	}
 	if a.opts.DryRun {
 		line1 += "  " + sDryBadge.Render("DRY RUN")
 	}
 
-	names := []string{"1 Overview", "2 Explorer", "3 Clean"}
-	var tabs []string
-	for i, n := range names {
-		if i == a.tab {
-			tabs = append(tabs, sTabOn.Render(n))
-		} else {
-			tabs = append(tabs, sTab.Render(n))
+	var line2 string
+	a.tabHits = a.tabHits[:0]
+	for i, n := range tabNames {
+		if i > 0 {
+			line2 += " "
 		}
+		style := sTab
+		if i == a.tab {
+			style = sTabOn
+		}
+		x0 := lipgloss.Width(line2)
+		line2 += style.Render(n)
+		a.tabHits = append(a.tabHits, tabHit{x0: x0, x1: lipgloss.Width(line2), tab: i})
 	}
-	line2 := strings.Join(tabs, " ")
 	if a.last != nil {
 		right := sDim.Render("last clean " + human.Ago(time.Now(), a.last.Time) + " · freed " + human.Bytes(a.last.Freed))
 		if gap := a.w - lipgloss.Width(line2) - lipgloss.Width(right); gap > 1 {
@@ -421,46 +578,5 @@ func (a *app) footerView() string {
 	if a.flash != "" {
 		return sYellow.Render(truncRight(a.flash, a.w))
 	}
-	var hints string
-	switch {
-	case a.help:
-		hints = "? close help"
-	case a.tab == tabOverview:
-		hints = "r rescan · p " + privateWord(a.opts.IncludePrivate) + " private folders · 2 explore · 3 clean · ? help · q quit"
-	case a.tab == tabExplorer:
-		hints = "↑↓ move · enter/→ open · ←/backspace up · o reveal in Finder · r rescan · q quit"
-	default:
-		hints = a.cleanHints()
-	}
-	return sDim.Render(truncRight(hints, a.w))
-}
-
-func privateWord(on bool) string {
-	if on {
-		return "skip"
-	}
-	return "include"
-}
-
-func (a *app) helpView() string {
-	lines := []string{
-		sHeading.Render("manage-disk"),
-		"",
-		"Overview   where your space goes, by category and by biggest spots",
-		"Explorer   drill into any folder, largest first (read-only)",
-		"Clean      re-run the cleanups: Tier 1 caches are on by default,",
-		"           Tier 2 (rebuilds, re-downloads) you switch on yourself",
-		"",
-		"Sizes are allocated bytes, like du; sparse files count what they use.",
-		"Folders macOS guards with consent dialogs (Desktop, Documents, Downloads…)",
-		"are skipped unless you press p or start with --include-private.",
-		"",
-		"Before every clean the tool re-checks what is running: browser caches of",
-		"open browsers, a running dev server's .next, npx folders an MCP server",
-		"runs from, and worktrees something works in are all left alone.",
-		"",
-		"Runs are logged to ~/Library/Logs/manage-disk/, and --dry-run (or d in",
-		"the Clean tab) shows what would happen without deleting anything.",
-	}
-	return strings.Join(lines, "\n")
+	return a.helpBar.View(a.helpKeys())
 }

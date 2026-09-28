@@ -3,9 +3,15 @@ package ui
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/progress"
+	"github.com/charmbracelet/bubbles/stopwatch"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
@@ -24,7 +30,6 @@ const (
 )
 
 type runState struct {
-	start             time.Time
 	cur               clean.Event
 	done, total       int
 	skipped, failed   int
@@ -33,31 +38,118 @@ type runState struct {
 	stopping          bool
 }
 
-func (r *runState) addLog(s string) {
-	r.log = append(r.log, s)
-	if len(r.log) > 400 {
-		r.log = r.log[len(r.log)-400:]
-	}
+type cleanState struct {
+	mode    int
+	cursor  int // task under the cursor
+	task    int // task whose items are open
+	rowTask map[int]int
+
+	items list.Model // the open task's items, filterable
+
+	run    runState
+	bar    progress.Model
+	watch  stopwatch.Model
+	log    viewport.Model
+	cancel context.CancelFunc
+	ch     chan tea.Msg
+
+	summary *clean.Summary
 }
 
-type cleanState struct {
-	mode             int
-	cursor           int // task under the cursor
-	task             int // task whose items are shown
-	dcursor, doffset int
-	run              runState
-	cancel           context.CancelFunc
-	ch               chan tea.Msg
-	summary          *clean.Summary
+func newCleanState() cleanState {
+	l := list.New(nil, itemDelegate{}, 0, 0)
+	l.SetShowTitle(false)
+	l.SetShowHelp(false)
+	l.SetFilteringEnabled(true)
+	l.SetStatusBarItemName("item", "items")
+	l.DisableQuitKeybindings()
+	l.KeyMap.PrevPage = key.NewBinding(key.WithKeys("pgup"))
+	l.KeyMap.NextPage = key.NewBinding(key.WithKeys("pgdown"))
+	l.KeyMap.ShowFullHelp.SetEnabled(false)
+	l.KeyMap.CloseFullHelp.SetEnabled(false)
+
+	vp := viewport.New(0, 0)
+	return cleanState{
+		items: l,
+		bar:   progress.New(progress.WithDefaultGradient()),
+		watch: stopwatch.NewWithInterval(time.Second),
+		log:   vp,
+	}
 }
 
 // modal modes take every key.
 func (c *cleanState) modal() bool { return c.mode >= modePreparing }
 
-func (c *cleanState) clampDetail(a *app) {
-	if c.mode == modeDetail {
-		c.dcursor = max(0, min(c.dcursor, len(a.tasks[c.task].items)-1))
+// itemEntry is one row of the item list; it reads the item live from its
+// task, so toggling a checkbox never has to rebuild the list.
+type itemEntry struct {
+	ts  *taskState
+	idx int
+}
+
+func (e itemEntry) item() (clean.Item, bool) {
+	if e.idx < len(e.ts.items) {
+		return e.ts.items[e.idx], true
 	}
+	return clean.Item{}, false
+}
+
+func (e itemEntry) FilterValue() string {
+	it, _ := e.item()
+	return it.Label + " " + it.Note
+}
+
+type itemDelegate struct{}
+
+func (itemDelegate) Height() int                         { return 1 }
+func (itemDelegate) Spacing() int                        { return 0 }
+func (itemDelegate) Update(tea.Msg, *list.Model) tea.Cmd { return nil }
+
+func (itemDelegate) Render(w io.Writer, m list.Model, index int, li list.Item) {
+	e := li.(itemEntry)
+	it, ok := e.item()
+	if !ok {
+		return
+	}
+	width := m.Width()
+	labelW := 8
+	for _, x := range e.ts.items {
+		labelW = max(labelW, len([]rune(x.Label)))
+	}
+	labelW = min(labelW, max(16, width/2))
+	noteW := max(10, width-19-labelW)
+
+	marker, box := "  ", "[ ]"
+	if it.Selected {
+		box = "[" + sGreen.Render("x") + "]"
+	}
+	label := pad(truncRight(it.Label, labelW), labelW)
+	if index == m.Index() {
+		marker, label = sCursor.Render("› "), sCursor.Render(label)
+	}
+	extra := sDim.Render(truncRight(it.Note, noteW))
+	if it.Blocked != "" {
+		extra = sYellow.Render(truncRight("blocked: "+it.Blocked, noteW))
+	}
+	fmt.Fprint(w, marker+box+" "+padLeft(human.Bytes(it.Size), 9)+"  "+label+"  "+extra)
+}
+
+// fillItems loads the open task's items into the list.
+func (c *cleanState) fillItems(a *app) {
+	ts := a.tasks[c.task]
+	entries := make([]list.Item, len(ts.items))
+	for i := range ts.items {
+		entries[i] = itemEntry{ts: ts, idx: i}
+	}
+	c.items.SetItems(entries)
+}
+
+func (c *cleanState) selectedEntry() (itemEntry, bool) {
+	e, ok := c.items.SelectedItem().(itemEntry)
+	if !ok || e.idx >= len(e.ts.items) {
+		return itemEntry{}, false
+	}
+	return e, true
 }
 
 func (a *app) selectedTotals() (size int64, n, blocked int) {
@@ -73,119 +165,163 @@ func (a *app) selectedTotals() (size int64, n, blocked int) {
 	return size, n, blocked
 }
 
-func (a *app) cleanKey(key string) tea.Cmd {
-	c := &a.cl
+func (a *app) cleanKey(msg tea.KeyMsg) tea.Cmd {
+	c, k := &a.cl, a.keys
 	switch c.mode {
 	case modeList:
-		return a.listKey(key)
+		return a.listKey(msg)
 	case modeDetail:
-		return a.detailKey(key)
+		return a.detailKey(msg)
 	case modePreparing:
-		if key == "esc" || key == "ctrl+c" || key == "n" {
+		if msg.Type == tea.KeyEsc || msg.Type == tea.KeyCtrlC || msg.String() == "n" {
 			c.mode = modeList
 		}
 	case modeConfirm:
-		switch key {
-		case "y", "enter":
+		switch {
+		case key.Matches(msg, k.Yes):
 			return a.startRun()
-		case "n", "esc", "q":
+		case key.Matches(msg, k.No):
 			c.mode = modeList
-		case "ctrl+c":
+		case msg.Type == tea.KeyCtrlC:
 			return tea.Quit
 		}
 	case modeRunning:
-		if (key == "esc" || key == "ctrl+c") && c.cancel != nil {
+		if key.Matches(msg, k.Stop) && c.cancel != nil {
 			c.cancel()
 			c.run.stopping = true
+			return nil
 		}
+		var cmd tea.Cmd
+		c.log, cmd = c.log.Update(msg)
+		return cmd
 	case modeDone:
-		if key == "ctrl+c" {
+		switch {
+		case msg.Type == tea.KeyCtrlC:
 			return tea.Quit
-		}
-		c.mode, c.summary = modeList, nil
-		switch key {
-		case "1":
-			a.tab = tabOverview
-		case "2":
-			a.tab = tabExplorer
+		case key.Matches(msg, k.Done):
+			c.mode, c.summary = modeList, nil
+		default:
+			var cmd tea.Cmd
+			c.log, cmd = c.log.Update(msg)
+			return cmd
 		}
 	}
 	return nil
 }
 
-func (a *app) listKey(key string) tea.Cmd {
-	c := &a.cl
-	switch key {
-	case "up", "k":
+func (a *app) listKey(msg tea.KeyMsg) tea.Cmd {
+	c, k := &a.cl, a.keys
+	switch {
+	case key.Matches(msg, k.Up):
 		c.cursor = max(0, c.cursor-1)
-	case "down", "j":
+	case key.Matches(msg, k.Down):
 		c.cursor = min(len(a.tasks)-1, c.cursor+1)
-	case " ", "space", "x":
-		ts := a.tasks[c.cursor]
-		ts.enabled = !ts.enabled
-	case "enter", "right", "l":
-		c.task, c.dcursor, c.doffset, c.mode = c.cursor, 0, 0, modeDetail
-	case "a":
+	case key.Matches(msg, k.Toggle):
+		a.tasks[c.cursor].enabled = !a.tasks[c.cursor].enabled
+	case key.Matches(msg, k.Details):
+		a.openDetail(c.cursor)
+	case key.Matches(msg, k.AllTier1):
 		for _, ts := range a.tasks {
 			ts.enabled = ts.enabled || ts.task.Tier == clean.Tier1
 		}
-	case "n":
+	case key.Matches(msg, k.None):
 		for _, ts := range a.tasks {
 			ts.enabled = false
 		}
-	case "d":
+	case key.Matches(msg, k.DryRun):
 		a.opts.DryRun = !a.opts.DryRun
-	case "r":
+	case key.Matches(msg, k.Refresh):
 		return a.discoverAll()
-	case "c":
+	case key.Matches(msg, k.CleanNow):
 		return a.prepareRun()
 	}
 	return nil
 }
 
-func (a *app) detailKey(key string) tea.Cmd {
+func (a *app) openDetail(i int) {
 	c := &a.cl
+	c.task, c.mode = i, modeDetail
+	c.items.ResetFilter()
+	c.fillItems(a)
+	c.items.Select(0)
+}
+
+func (a *app) detailKey(msg tea.KeyMsg) tea.Cmd {
+	c, k := &a.cl, a.keys
+	if c.items.SettingFilter() {
+		var cmd tea.Cmd
+		c.items, cmd = c.items.Update(msg)
+		return cmd
+	}
 	ts := a.tasks[c.task]
-	n := len(ts.items)
-	switch key {
-	case "esc", "left", "h", "backspace":
+	switch {
+	case msg.Type == tea.KeyEsc && c.items.IsFiltered():
+		c.items.ResetFilter()
+	case msg.Type == tea.KeyEsc || msg.Type == tea.KeyBackspace || msg.Type == tea.KeyLeft:
 		c.mode = modeList
-	case "up", "k":
-		c.dcursor--
-	case "down", "j":
-		c.dcursor++
-	case "pgup", "ctrl+u":
-		c.dcursor -= 10
-	case "pgdown", "ctrl+d":
-		c.dcursor += 10
-	case "home", "g":
-		c.dcursor = 0
-	case "end", "G":
-		c.dcursor = n - 1
-	case " ", "space", "x":
-		if c.dcursor < n {
-			ts.items[c.dcursor].Selected = !ts.items[c.dcursor].Selected
-			if ts.items[c.dcursor].Selected {
-				ts.enabled = true
-			}
+	case key.Matches(msg, k.Toggle):
+		if e, ok := c.selectedEntry(); ok {
+			ts.items[e.idx].Selected = !ts.items[e.idx].Selected
+			ts.enabled = ts.enabled || ts.items[e.idx].Selected
 		}
-	case "a":
+	case key.Matches(msg, k.AllTier1):
 		for i := range ts.items {
 			ts.items[i].Selected = true
 		}
 		ts.enabled = true
-	case "n":
+	case key.Matches(msg, k.None):
 		for i := range ts.items {
 			ts.items[i].Selected = false
 		}
-	case "o":
-		if c.dcursor < n {
-			return reveal(ts.items[c.dcursor].Path())
+	case key.Matches(msg, k.Reveal):
+		if e, ok := c.selectedEntry(); ok {
+			return reveal(ts.items[e.idx].Path())
 		}
-	case "c":
+	case key.Matches(msg, k.CleanNow):
 		return a.prepareRun()
+	default:
+		var cmd tea.Cmd
+		c.items, cmd = c.items.Update(msg)
+		return cmd
 	}
-	c.dcursor = max(0, min(c.dcursor, n-1))
+	return nil
+}
+
+func (a *app) cleanMouse(msg tea.MouseMsg) tea.Cmd {
+	c := &a.cl
+	switch c.mode {
+	case modeRunning, modeDone:
+		var cmd tea.Cmd
+		c.log, cmd = c.log.Update(msg)
+		return cmd
+	case modeDetail:
+		if msg.Action == tea.MouseActionPress {
+			switch msg.Button {
+			case tea.MouseButtonWheelUp:
+				c.items.CursorUp()
+			case tea.MouseButtonWheelDown:
+				c.items.CursorDown()
+			}
+		}
+	case modeList:
+		if msg.Action != tea.MouseActionPress {
+			return nil
+		}
+		switch msg.Button {
+		case tea.MouseButtonWheelUp:
+			c.cursor = max(0, c.cursor-1)
+		case tea.MouseButtonWheelDown:
+			c.cursor = min(len(a.tasks)-1, c.cursor+1)
+		case tea.MouseButtonLeft:
+			if i, ok := c.rowTask[msg.Y]; ok {
+				if i == c.cursor {
+					a.openDetail(i)
+				} else {
+					c.cursor = i
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -204,7 +340,7 @@ func (a *app) prepareRun() tea.Cmd {
 	a.cl.mode = modePreparing
 	a.env.ResetProcs()
 	a.discGen++
-	var cmds []tea.Cmd
+	cmds := []tea.Cmd{a.wake()}
 	for i, ts := range a.tasks {
 		if ts.task.Heavy && a.res == nil && !ts.enabled {
 			ts.waiting = true
@@ -232,7 +368,7 @@ func (a *app) maybeConfirm() tea.Cmd {
 
 func (a *app) startRun() tea.Cmd {
 	var sels []clean.Selection
-	r := runState{start: time.Now()}
+	r := runState{}
 	for _, ts := range a.tasks {
 		if !ts.enabled {
 			continue
@@ -249,18 +385,20 @@ func (a *app) startRun() tea.Cmd {
 			sels = append(sels, clean.Selection{Task: ts.task, Items: items})
 		}
 	}
-	a.cl.mode, a.cl.run = modeRunning, r
+	c := &a.cl
+	c.mode, c.run = modeRunning, r
+	c.log.SetContent("")
 	ctx, cancel := context.WithCancel(context.Background())
-	a.cl.cancel = cancel
+	c.cancel = cancel
 	ch := make(chan tea.Msg, 512)
-	a.cl.ch = ch
+	c.ch = ch
 	env, dry := a.env, a.opts.DryRun
 	go func() {
 		sum := clean.Run(ctx, env, sels, dry, func(e clean.Event) { ch <- runEventMsg{e} })
 		ch <- runDoneMsg{sum}
 		close(ch)
 	}()
-	return tea.Batch(waitFor(ch), tick())
+	return tea.Batch(waitFor(ch), tick(), a.wake(), c.bar.SetPercent(0), c.watch.Reset(), c.watch.Start())
 }
 
 func waitFor(ch <-chan tea.Msg) tea.Cmd {
@@ -274,7 +412,8 @@ func waitFor(ch <-chan tea.Msg) tea.Cmd {
 }
 
 func (a *app) onRunEvent(ev clean.Event) tea.Cmd {
-	r := &a.cl.run
+	c := &a.cl
+	r := &c.run
 	label := ev.Task + ": " + ev.Item
 	switch ev.Kind {
 	case clean.EventStart:
@@ -286,38 +425,63 @@ func (a *app) onRunEvent(ev clean.Event) tea.Cmd {
 		if ev.Msg != "" {
 			note = " (" + ev.Msg + ")"
 		}
-		r.addLog(sGreen.Render("✓ ") + label + sDim.Render("  "+human.Bytes(ev.Bytes)+note))
+		c.addLog(sGreen.Render("✓ ") + label + sDim.Render("  "+human.Bytes(ev.Bytes)+note))
 	case clean.EventSkip:
 		r.skipped++
-		r.addLog(sYellow.Render("– ") + label + sDim.Render("  skipped: "+ev.Msg))
+		c.addLog(sYellow.Render("– ") + label + sDim.Render("  skipped: "+ev.Msg))
 	case clean.EventFail:
 		r.failed++
-		r.addLog(sRed.Render("✗ ") + label + sRed.Render("  "+ev.Msg))
+		c.addLog(sRed.Render("✗ ") + label + sRed.Render("  "+ev.Msg))
 	case clean.EventLog:
-		r.addLog(sDim.Render("    " + ev.Msg))
+		c.addLog(sDim.Render("    " + ev.Msg))
 	}
-	return waitFor(a.cl.ch)
+	return tea.Batch(waitFor(c.ch), c.bar.SetPercent(r.fraction()))
+}
+
+func (r *runState) fraction() float64 {
+	switch {
+	case r.totalBytes > 0:
+		return min(1, float64(r.bytes)/float64(r.totalBytes))
+	case r.total > 0:
+		return float64(r.done+r.skipped+r.failed) / float64(r.total)
+	}
+	return 0
+}
+
+// addLog appends to the run log, following the newest line unless you have
+// scrolled up to read something.
+func (c *cleanState) addLog(s string) {
+	follow := c.log.AtBottom()
+	c.run.log = append(c.run.log, s)
+	if len(c.run.log) > 2000 {
+		c.run.log = c.run.log[len(c.run.log)-2000:]
+	}
+	c.log.SetContent(strings.Join(c.run.log, "\n"))
+	if follow {
+		c.log.GotoBottom()
+	}
 }
 
 func (a *app) onRunDone(sum clean.Summary) tea.Cmd {
-	a.cl.mode, a.cl.summary, a.cl.cancel = modeDone, &sum, nil
-	var cmds []tea.Cmd
+	c := &a.cl
+	c.mode, c.summary, c.cancel = modeDone, &sum, nil
+	cmds := []tea.Cmd{c.watch.Stop(), c.bar.SetPercent(1)}
 	if !sum.DryRun {
 		// Drop what was deleted from the tree; re-measure what commands cleaned.
 		a.env.EditTree(func(root *scan.Node) {
-			for _, c := range sum.Cleaned {
-				if !c.Command {
-					for _, p := range c.Item.Paths {
+			for _, cl := range sum.Cleaned {
+				if !cl.Command {
+					for _, p := range cl.Item.Paths {
 						root.Remove(p)
 					}
 				}
 			}
 		})
-		for _, c := range sum.Cleaned {
+		for _, cl := range sum.Cleaned {
 			// Only paths the scan read: re-measuring Docker's disk image would
 			// reach into a folder macOS guards with a dialog.
-			if c.Command && a.res != nil && a.res.Root.Find(c.Item.Path()) != nil {
-				cmds = append(cmds, a.remeasure(c.Item.Path()))
+			if cl.Command && a.res != nil && a.res.Root.Find(cl.Item.Path()) != nil {
+				cmds = append(cmds, a.remeasure(cl.Item.Path()))
 			}
 		}
 		a.refreshInsights()
@@ -326,20 +490,30 @@ func (a *app) onRunDone(sum clean.Summary) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (a *app) cleanHints() string {
+func (a *app) cleanHelpKeys(tabs []key.Binding) keyHelp {
+	k := a.keys
+	scroll := key.NewBinding(key.WithKeys("up", "down"), key.WithHelp("↑↓/wheel", "scroll the log"))
 	switch a.cl.mode {
 	case modeDetail:
-		return "↑↓ move · space toggle · a all · n none · o reveal · esc back · c clean"
+		back := key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back"))
+		return keyHelp{short: []key.Binding{k.Up, k.Down, k.Toggle, k.Filter, k.AllTier1, k.None, k.Reveal, back, k.CleanNow}}
 	case modePreparing:
-		return "esc cancel"
+		return keyHelp{short: []key.Binding{key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel"))}}
 	case modeConfirm:
-		return "y clean · n cancel"
+		return keyHelp{short: []key.Binding{k.Yes, k.No}}
 	case modeRunning:
-		return "esc stop after the current item"
+		return keyHelp{short: []key.Binding{k.Stop, scroll}}
 	case modeDone:
-		return "any key to go back"
+		return keyHelp{short: []key.Binding{k.Done, scroll}}
 	}
-	return "↑↓ move · space toggle · enter items · c clean · d dry run · a all tier 1 · n none · r refresh · q quit"
+	return keyHelp{
+		short: []key.Binding{k.Up, k.Down, k.Toggle, k.Details, k.CleanNow, k.DryRun, k.Help, k.Quit},
+		full: [][]key.Binding{
+			{k.Up, k.Down, k.Toggle, k.Details},
+			{k.AllTier1, k.None, k.Refresh, k.DryRun, k.CleanNow},
+			tabs, {k.Help, k.Quit},
+		},
+	}
 }
 
 func (a *app) cleanView(h int) string {
@@ -379,7 +553,12 @@ func (a *app) taskStatus(ts *taskState) string {
 
 func (a *app) listView() string {
 	var b strings.Builder
-	line := func(s string) { b.WriteString(s + "\n") }
+	row := 0
+	line := func(s string) {
+		b.WriteString(s + "\n")
+		row++
+	}
+	a.cl.rowTask = map[int]int{}
 	line(sHeading.Render("Clean") + sDim.Render("  space switches a task on or off · enter shows its items · c cleans"))
 	titleW := min(34, max(20, a.w/3))
 	for _, tier := range []clean.Tier{clean.Tier1, clean.Tier2} {
@@ -401,6 +580,7 @@ func (a *app) listView() string {
 			if i == a.cl.cursor {
 				marker, title = sCursor.Render("› "), sCursor.Render(title)
 			}
+			a.cl.rowTask[a.headerH+row] = i
 			line(marker + box + " " + title + " " + a.taskStatus(ts))
 		}
 	}
@@ -445,39 +625,10 @@ func (a *app) detailView(h int) string {
 		b.WriteString(a.taskStatus(ts) + "\n")
 		return b.String()
 	}
-
-	listH := max(3, h-lipgloss.Height(b.String())-2)
-	if c.dcursor < c.doffset {
-		c.doffset = c.dcursor
-	}
-	if c.dcursor >= c.doffset+listH {
-		c.doffset = c.dcursor - listH + 1
-	}
-	// Size the label column to the longest label, and give the note what is left.
-	labelW := 8
-	for _, it := range ts.items {
-		labelW = max(labelW, len([]rune(it.Label)))
-	}
-	labelW = min(labelW, max(16, a.w/2))
-	noteW := max(10, a.w-19-labelW)
-	for i := c.doffset; i < min(len(ts.items), c.doffset+listH); i++ {
-		it := ts.items[i]
-		marker, box := "  ", "[ ]"
-		if it.Selected {
-			box = "[" + sGreen.Render("x") + "]"
-		}
-		label := pad(truncRight(it.Label, labelW), labelW)
-		if i == c.dcursor {
-			marker, label = sCursor.Render("› "), sCursor.Render(label)
-		}
-		extra := sDim.Render(truncRight(it.Note, noteW))
-		if it.Blocked != "" {
-			extra = sYellow.Render(truncRight("blocked: "+it.Blocked, noteW))
-		}
-		b.WriteString(marker + box + " " + padLeft(human.Bytes(it.Size), 9) + "  " + label + "  " + extra + "\n")
-	}
 	size, n := ts.ready()
-	b.WriteString("\n" + sDim.Render(fmt.Sprintf("%d items · %s chosen in %d", len(ts.items), human.Bytes(size), n)))
+	foot := sDim.Render(fmt.Sprintf("%s chosen in %s", human.Bytes(size), plural(n, "item")))
+	c.items.SetSize(a.w, max(4, h-lipgloss.Height(b.String())-1))
+	b.WriteString(c.items.View() + "\n" + foot)
 	return b.String()
 }
 
@@ -508,7 +659,8 @@ func (a *app) confirmView() string {
 }
 
 func (a *app) runningView(h int) string {
-	r := &a.cl.run
+	c := &a.cl
+	r := &c.run
 	title := " Cleaning…"
 	if a.opts.DryRun {
 		title = " Dry run…"
@@ -516,27 +668,23 @@ func (a *app) runningView(h int) string {
 	if r.stopping {
 		title = " Stopping after the current item…"
 	}
-	frac := 0.0
-	if r.totalBytes > 0 {
-		frac = float64(r.bytes) / float64(r.totalBytes)
-	} else if r.total > 0 {
-		frac = float64(r.done) / float64(r.total)
-	}
+	c.bar.Width = max(10, min(60, a.w-40))
 	var b strings.Builder
-	b.WriteString(a.spin.View() + sBold.Render(title) + sDim.Render("  "+human.Duration(time.Since(r.start))) + "\n\n")
-	b.WriteString(bar(frac, max(10, min(60, a.w-40)), sGreen) + fmt.Sprintf("  %s / %s · %d of %d items\n",
+	b.WriteString(a.spin.View() + sBold.Render(title) + sDim.Render("  "+c.watch.View()) + "\n\n")
+	b.WriteString(c.bar.View() + fmt.Sprintf("  %s / %s · %d of %d items\n",
 		human.Bytes(r.bytes), human.Bytes(r.totalBytes), r.done+r.skipped+r.failed, r.total))
 	if r.cur.Item != "" {
 		b.WriteString(sDim.Render("now: "+truncRight(r.cur.Task+" — "+r.cur.Item, max(10, a.w-6))) + "\n")
 	}
 	b.WriteString("\n")
-	b.WriteString(tail(r.log, max(1, h-6)))
+	c.log.Width, c.log.Height = a.w, max(1, h-6)
+	b.WriteString(c.log.View())
 	return b.String()
 }
 
 func (a *app) doneView(h int) string {
-	s := a.cl.summary
-	r := &a.cl.run
+	c := &a.cl
+	s := c.summary
 	var b strings.Builder
 	took := human.Duration(s.Ended.Sub(s.Started))
 	if s.DryRun {
@@ -568,7 +716,9 @@ func (a *app) doneView(h int) string {
 	if s.LogPath != "" {
 		b.WriteString(sDim.Render("Log: "+tildePath(a.home, s.LogPath)) + "\n")
 	}
-	b.WriteString("\n" + tail(r.log, max(1, h-8)))
+	b.WriteString("\n")
+	c.log.Width, c.log.Height = a.w, max(1, h-lipgloss.Height(b.String()))
+	b.WriteString(c.log.View())
 	return b.String()
 }
 
@@ -577,11 +727,4 @@ func plural(n int, word string) string {
 		return "1 " + word
 	}
 	return fmt.Sprintf("%d %ss", n, word)
-}
-
-func tail(lines []string, n int) string {
-	if len(lines) > n {
-		lines = lines[len(lines)-n:]
-	}
-	return strings.Join(lines, "\n")
 }

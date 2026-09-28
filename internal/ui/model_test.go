@@ -41,7 +41,7 @@ func giveTree(a *app, root *scan.Node, private ...string) {
 	a.update(scanDoneMsg{gen: a.scanGen, res: &scan.Result{Root: root, Took: time.Second, Private: private}})
 }
 
-func key(s string) tea.Msg {
+func keyMsg(s string) tea.Msg {
 	switch s {
 	case "enter":
 		return tea.KeyMsg{Type: tea.KeyEnter}
@@ -84,7 +84,7 @@ func drive(t *testing.T, a *app, cmd tea.Cmd) {
 func press(t *testing.T, a *app, keys ...string) {
 	t.Helper()
 	for _, k := range keys {
-		drive(t, a, a.update(key(k)))
+		drive(t, a, a.update(keyMsg(k)))
 	}
 }
 
@@ -117,7 +117,7 @@ func TestExplorerDrillsInAndOut(t *testing.T) {
 		node("big", 20<<20, node("inner", 20<<20, node("deep", 20<<20))),
 		&scan.Node{Name: "file.bin", Size: 10 << 20, Files: 1},
 	))
-	press(t, a, "2")
+	press(t, a, "3") // the explorer
 	if !strings.Contains(a.view(), "big/") {
 		t.Fatal("explorer should list the root's children")
 	}
@@ -167,7 +167,7 @@ func cleanFlow(t *testing.T, dryRun bool) (*app, string) {
 	root := node(a.home, 2<<20, node(".cache", 2<<20, node("fake", 2<<20)))
 	giveTree(a, root)
 
-	press(t, a, "3", "c") // re-checks, then asks
+	press(t, a, "4", "c") // re-checks, then asks
 	if a.cl.mode != modeConfirm {
 		t.Fatalf("after c the mode is %d, want confirm", a.cl.mode)
 	}
@@ -225,7 +225,7 @@ func TestBlockedItemsNeverRun(t *testing.T) {
 		},
 	}
 	a.tasks = []*taskState{{task: task, enabled: true}}
-	press(t, a, "3", "c")
+	press(t, a, "4", "c")
 	if a.cl.mode != modeList || !strings.Contains(a.flash, "Nothing to clean") {
 		t.Errorf("mode %d flash %q: a blocked-only selection must not reach confirm", a.cl.mode, a.flash)
 	}

@@ -5,23 +5,80 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"manage-disk/internal/clean"
 	"manage-disk/internal/human"
 	"manage-disk/internal/scan"
 )
 
-func (a *app) overviewKey(key string) tea.Cmd {
-	switch key {
-	case "r":
-		return tea.Batch(a.startScan(), a.discoverAll())
-	case "p":
-		a.opts.IncludePrivate = !a.opts.IncludePrivate
-		if a.opts.IncludePrivate {
-			a.flash = "Rescanning with Desktop, Documents, Downloads… — macOS may ask for permission"
-		}
-		return a.startScan()
+func newSpotsTable() table.Model {
+	s := table.DefaultStyles()
+	s.Header = s.Header.BorderStyle(lipgloss.NormalBorder()).BorderForeground(colFaint).BorderBottom(true).Bold(true)
+	s.Selected = s.Selected.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#6D28D9")).Bold(false)
+	return table.New(table.WithFocused(true), table.WithStyles(s))
+}
+
+// refreshSpots fills the biggest-spots table for the current width.
+func (a *app) refreshSpots() {
+	sizeW, shareW, tagW := 10, 7, min(24, max(10, a.w/5))
+	whereW := max(16, a.w-sizeW-shareW-tagW-8)
+	a.spots.SetColumns([]table.Column{
+		{Title: "Size", Width: sizeW}, {Title: "Share", Width: shareW},
+		{Title: "Where", Width: whereW}, {Title: "Cleanable", Width: tagW},
+	})
+	tags := a.cleanTags()
+	var total int64 = 1
+	if a.res != nil {
+		total = max(1, a.res.Root.Size)
+	}
+	rows := make([]table.Row, 0, len(a.hot))
+	for _, n := range a.hot {
+		rows = append(rows, table.Row{
+			fmt.Sprintf("%*s", sizeW, human.Bytes(n.Size)),
+			fmt.Sprintf("%5.1f%%", 100*float64(n.Size)/float64(total)),
+			truncLeft(tildePath(a.home, n.Path()), whereW),
+			truncRight(tags[n.Path()], tagW),
+		})
+	}
+	a.spots.SetRows(rows)
+}
+
+func (a *app) overviewKey(msg tea.KeyMsg) tea.Cmd {
+	if key.Matches(msg, a.keys.SpotOpen) {
+		a.openSpot()
+		return nil
+	}
+	var cmd tea.Cmd
+	a.spots, cmd = a.spots.Update(msg)
+	return cmd
+}
+
+// openSpot shows the selected spot in the map, inside its parent folder.
+func (a *app) openSpot() {
+	i := a.spots.Cursor()
+	if a.res == nil || i < 0 || i >= len(a.hot) || a.hot[i].Parent == nil {
+		return
+	}
+	spot := a.hot[i]
+	a.exp.enter(spot.Parent.Path())
+	a.exp.selectName(spot.Parent, spot.Name)
+	a.mp.sel = spot.Name
+	a.tab = tabMap
+}
+
+func (a *app) overviewMouse(msg tea.MouseMsg) tea.Cmd {
+	if msg.Action != tea.MouseActionPress {
+		return nil
+	}
+	switch msg.Button {
+	case tea.MouseButtonWheelUp:
+		a.spots.MoveUp(1)
+	case tea.MouseButtonWheelDown:
+		a.spots.MoveDown(1)
 	}
 	return nil
 }
@@ -29,16 +86,26 @@ func (a *app) overviewKey(key string) tea.Cmd {
 func (a *app) scanStatus() string {
 	if a.scanning {
 		p := a.prog
-		line := fmt.Sprintf("%s Scanning… %s files · %s · %s", a.spin.View(),
-			human.Count(p.Files()), human.Bytes(p.Bytes()), human.Duration(time.Since(a.scanStart)))
+		elapsed := human.Duration(time.Since(a.scanStart))
+		var line string
+		if a.lastScan.Files > 0 {
+			// The previous scan's file count makes a fair yardstick for this one.
+			frac := min(0.99, float64(p.Files())/float64(a.lastScan.Files))
+			a.scanBar.Width = min(40, max(10, a.w/3))
+			line = "Scanning " + a.scanBar.ViewAs(frac) + sDim.Render(fmt.Sprintf("  %s files · %s · %s",
+				human.Count(p.Files()), human.Bytes(p.Bytes()), elapsed))
+		} else {
+			line = fmt.Sprintf("%s Scanning… %s files · %s · %s", a.spin.View(),
+				human.Count(p.Files()), human.Bytes(p.Bytes()), elapsed)
+		}
 		if cur := p.Current(); cur != "" {
-			line += "  " + sDim.Render(truncLeft(tildePath(a.home, cur), max(10, a.w-60)))
+			line += "  " + sDim.Render(truncLeft(tildePath(a.home, cur), max(10, a.w-lipgloss.Width(line)-2)))
 		}
 		if wait := p.Waiting(); wait != "" {
 			line += "\n" + sYellow.Render("Waiting on "+truncLeft(tildePath(a.home, wait), max(10, a.w-90))+
 				" — if macOS shows a permission dialog, either answer is fine; the scan moves on after 15s.")
 		}
-		return line
+		return lipgloss.NewStyle().MaxWidth(a.w).Render(line)
 	}
 	if a.scanErr != nil {
 		return sRed.Render("Scan failed: " + a.scanErr.Error())
@@ -53,7 +120,13 @@ func (a *app) scanStatus() string {
 func (a *app) overviewView(h int) string {
 	var b strings.Builder
 	line := func(s string) { b.WriteString(s + "\n") }
-	line(a.scanStatus())
+	status := a.scanStatus()
+	if t := a.trendLine(); t != "" {
+		if gap := a.w - lipgloss.Width(status) - lipgloss.Width(t); gap > 2 && !strings.Contains(status, "\n") {
+			status += strings.Repeat(" ", gap) + t
+		}
+	}
+	line(status)
 	line("")
 	if a.res == nil {
 		line(sDim.Render("Measuring your home folder. Big homes take a minute; everything else works meanwhile."))
@@ -63,44 +136,37 @@ func (a *app) overviewView(h int) string {
 	}
 
 	total := a.res.Root.Size
-	nameW, sizeW := 24, 10
-	barW := max(8, min(40, a.w-nameW-sizeW-10))
 	line(sHeading.Render("Where your space goes"))
+	line(a.stackedBar(total, a.w))
+	nameW, sizeW := 24, 10
+	barW := max(8, min(40, a.w-nameW-sizeW-12))
 	for _, c := range a.cats {
 		name := c.Name
 		if c.Partial {
 			name += "*"
 		}
+		dot := lipgloss.NewStyle().Foreground(categoryColor(c.Name)).Render("■")
 		if c.Size < 1<<20 {
 			if c.Partial {
-				line(fmt.Sprintf(" %s %s  %s", pad(name, nameW), padLeft("—", sizeW), sDim.Render("not scanned, see * below")))
+				line(fmt.Sprintf(" %s %s %s  %s", dot, pad(name, nameW), padLeft("—", sizeW), sDim.Render("not scanned, see * below")))
 			}
 			continue
 		}
 		frac := float64(c.Size) / float64(max(1, total))
-		line(fmt.Sprintf(" %s %s  %s %s", pad(name, nameW), padLeft(human.Bytes(c.Size), sizeW),
-			bar(frac, barW, sAccent), sDim.Render(fmt.Sprintf("%3.0f%%", frac*100))))
+		line(fmt.Sprintf(" %s %s %s  %s %s", dot, pad(name, nameW), padLeft(human.Bytes(c.Size), sizeW),
+			bar(frac, barW, lipgloss.NewStyle().Foreground(categoryColor(c.Name))), sDim.Render(fmt.Sprintf("%3.0f%%", frac*100))))
 	}
 	line("")
 
-	// Whatever room is left goes to the biggest spots.
+	// The spots table gets whatever room is left above the cleanable summary.
 	used := strings.Count(b.String(), "\n")
 	room := h - used - 9
-	if room > 2 && len(a.hot) > 0 {
-		line(sHeading.Render("Biggest spots"))
-		tags := a.cleanTags()
-		for i, n := range a.hot {
-			if i >= room {
-				break
-			}
-			path := tildePath(a.home, n.Path())
-			tag, tagW := "", 0
-			if t, ok := tags[n.Path()]; ok {
-				tag, tagW = "  "+sGreen.Render(t), len(t)+2
-			}
-			line(fmt.Sprintf(" %s  %s%s", padLeft(human.Bytes(n.Size), sizeW),
-				truncLeft(path, max(10, a.w-sizeW-4-tagW)), tag))
-		}
+	if room >= 4 && len(a.hot) > 0 {
+		line(sHeading.Render("Biggest spots") + sDim.Render("  ↑↓ choose · enter shows it in the map"))
+		a.refreshSpots()
+		a.spots.SetWidth(a.w)
+		a.spots.SetHeight(min(room-1, len(a.hot)+2)) // +2: the header and its rule
+		line(a.spots.View())
 		line("")
 	}
 	a.writeCleanable(line)
@@ -109,15 +175,49 @@ func (a *app) overviewView(h int) string {
 		for _, p := range nr {
 			names = append(names, tildePath(a.home, p))
 		}
-		line("")
 		line(sYellow.Render("! Never answered, so not measured (macOS may have asked for permission): " + strings.Join(names, ", ")))
 	}
 	if len(a.res.Private) > 0 && !a.opts.IncludePrivate {
-		line("")
 		line(sDim.Render("* Not scanned, macOS guards them: " + strings.Join(scan.SummarizePrivate(a.res.Private), ", ") +
 			". Press p to include them (macOS may ask for permission)."))
 	}
 	return b.String()
+}
+
+// stackedBar is the whole scan in one line, one coloured run per category.
+func (a *app) stackedBar(total int64, width int) string {
+	if total <= 0 || width <= 0 {
+		return ""
+	}
+	var b strings.Builder
+	used := 0
+	for i, c := range a.cats {
+		cells := int(float64(c.Size) / float64(total) * float64(width))
+		if i == len(a.cats)-1 {
+			cells = width - used
+		}
+		cells = min(cells, width-used)
+		if cells <= 0 {
+			continue
+		}
+		b.WriteString(lipgloss.NewStyle().Foreground(categoryColor(c.Name)).Render(strings.Repeat("█", cells)))
+		used += cells
+	}
+	return b.String()
+}
+
+// trendLine is free space over the recorded samples, oldest to newest.
+func (a *app) trendLine() string {
+	if len(a.trend) < 2 {
+		return ""
+	}
+	first, last := a.trend[0], a.trend[len(a.trend)-1]
+	span := last.At.Sub(first.At)
+	label := "free space"
+	if span >= 24*time.Hour {
+		label += fmt.Sprintf(", %d days", int(span.Hours()/24))
+	}
+	return sDim.Render(label+" ") + sAccent.Render(sparkline(a.trend, 30)) + sDim.Render(" "+human.Bytes(last.Free))
 }
 
 func (a *app) writeCleanable(line func(string)) {
@@ -150,7 +250,7 @@ func (a *app) writeCleanable(line func(string)) {
 	line(t1s + sDim.Render("  — caches, on by default"))
 	line(fmt.Sprintf(" Tier 2  %s in %s", sYellow.Render(human.Bytes(t2)), plural(n2, "item")) +
 		sDim.Render("  — costs a rebuild or re-download, off by default"))
-	line(sDim.Render(" Press 3 to review and clean."))
+	line(sDim.Render(" Press 4 to review and clean."))
 }
 
 func tildePath(home, p string) string {
