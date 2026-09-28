@@ -101,6 +101,7 @@ type Resource struct {
 	Records  int
 	LastUsed time.Time
 	Until    time.Duration // prune only cache unused for this long; 0 prunes it all
+	Before   time.Time     // or prune only what was last used before this (a plan's partial prune)
 
 	// Compose.
 	Project     string
@@ -116,9 +117,27 @@ type Resource struct {
 	Verdict Verdict
 	Reasons []string
 
-	imageID    string // containers: the id of the image they run
-	empty      bool   // volumes: Docker measured nothing in it
-	cacheInUse bool   // build cache: a build holds some of it
+	imageID    string     // containers: the id of the image they run
+	empty      bool       // volumes: Docker measured nothing in it
+	cacheInUse bool       // build cache: a build holds some of it
+	uses       []cacheUse // build cache: each record's last use and size
+}
+
+type cacheUse struct {
+	used time.Time
+	size int64
+}
+
+// Cut is what pruning the build cache last used before t frees, and how many
+// records that is. Records never used count as oldest.
+func (r Resource) Cut(t time.Time) (size int64, records int) {
+	for _, u := range r.uses {
+		if u.used.Before(t) {
+			size += u.size
+			records++
+		}
+	}
+	return size, records
 }
 
 // Key identifies a resource from one audit to the next.
@@ -139,8 +158,15 @@ func (r Resource) Command() []string {
 		return []string{"volume", "rm", r.ID}
 	}
 	// -f only skips prune's own y/N prompt; cache a build uses is never pruned.
-	if r.Until > 0 {
+	switch {
+	case r.Until > 0:
 		return []string{"builder", "prune", "-f", "--filter", fmt.Sprintf("until=%dh", int(r.Until.Hours()))}
+	case !r.Before.IsZero():
+		// until is a duration back from the daemon's now, so it is worked out
+		// when the command runs. Rounding it up puts the cut no later than
+		// Before: never more pruned than planned.
+		secs := max(1, int64(math.Ceil(time.Since(r.Before).Seconds())))
+		return []string{"builder", "prune", "-f", "--filter", fmt.Sprintf("until=%ds", secs)}
 	}
 	return []string{"builder", "prune", "-f"}
 }
@@ -591,6 +617,7 @@ func (a *audit) buildCache(rows []dfCache) (shared int64) {
 		}
 		r.Size += size
 		r.Records++
+		r.uses = append(r.uses, cacheUse{used: used, size: size})
 		if used.After(r.LastUsed) {
 			r.LastUsed = used
 		}
