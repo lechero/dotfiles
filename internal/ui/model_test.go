@@ -175,7 +175,7 @@ func cleanFlow(t *testing.T, dryRun bool) (*app, string) {
 		t.Errorf("confirm should count the item:\n%s", a.view())
 	}
 	press(t, a, "y")
-	if a.cl.mode != modeDone || a.cl.summary == nil {
+	if a.cl.mode != modeDone || a.run.summary == nil {
 		t.Fatalf("run did not finish: mode %d", a.cl.mode)
 	}
 	return a, dir
@@ -189,7 +189,7 @@ func TestCleanFlowDeletesAndUpdatesTheTree(t *testing.T) {
 	if a.res.Root.Find(dir) != nil || a.res.Root.Size != 0 {
 		t.Errorf("the tree should drop the deleted folder, root size %d", a.res.Root.Size)
 	}
-	if out := a.view(); !strings.Contains(out, "Done in") || !strings.Contains(out, "1 cleaned") {
+	if out := a.view(); !strings.Contains(out, "Done in") || !strings.Contains(out, "1 done") {
 		t.Errorf("done view:\n%s", out)
 	}
 	if a.last == nil {

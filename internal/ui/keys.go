@@ -9,6 +9,7 @@ import (
 // footer can never drift from what the handlers do.
 type keyMap struct {
 	Overview, Map, Explorer, Clean key.Binding
+	Worktrees                      key.Binding
 	NextTab, PrevTab               key.Binding
 	Help, Quit                     key.Binding
 	Rescan, Private                key.Binding
@@ -22,6 +23,8 @@ type keyMap struct {
 
 	Toggle, AllTier1, None, DryRun, Refresh, CleanNow, Details key.Binding
 	Yes, No, Stop, Done                                        key.Binding
+
+	WtAll, WtBranches, WtFetch, WtRecheck, WtRemove key.Binding
 }
 
 func newKeyMap() keyMap {
@@ -29,16 +32,17 @@ func newKeyMap() keyMap {
 		return key.NewBinding(key.WithKeys(keys...), key.WithHelp(helpKey, desc))
 	}
 	return keyMap{
-		Overview: b([]string{"1"}, "1", "overview"),
-		Map:      b([]string{"2"}, "2", "map"),
-		Explorer: b([]string{"3"}, "3", "explorer"),
-		Clean:    b([]string{"4"}, "4", "clean"),
-		NextTab:  b([]string{"tab"}, "tab", "next tab"),
-		PrevTab:  b([]string{"shift+tab"}, "⇧tab", "previous tab"),
-		Help:     b([]string{"?"}, "?", "all keys"),
-		Quit:     b([]string{"q", "ctrl+c"}, "q", "quit"),
-		Rescan:   b([]string{"r"}, "r", "rescan"),
-		Private:  b([]string{"p"}, "p", "private folders on/off"),
+		Overview:  b([]string{"1"}, "1", "overview"),
+		Map:       b([]string{"2"}, "2", "map"),
+		Explorer:  b([]string{"3"}, "3", "explorer"),
+		Clean:     b([]string{"4"}, "4", "clean"),
+		Worktrees: b([]string{"5"}, "5", "worktrees"),
+		NextTab:   b([]string{"tab"}, "tab", "next tab"),
+		PrevTab:   b([]string{"shift+tab"}, "⇧tab", "previous tab"),
+		Help:      b([]string{"?"}, "?", "all keys"),
+		Quit:      b([]string{"q", "ctrl+c"}, "q", "quit"),
+		Rescan:    b([]string{"r"}, "r", "rescan"),
+		Private:   b([]string{"p"}, "p", "private folders on/off"),
 
 		Up:       b([]string{"up", "k"}, "↑/k", "up"),
 		Down:     b([]string{"down", "j"}, "↓/j", "down"),
@@ -70,7 +74,13 @@ func newKeyMap() keyMap {
 		CleanNow: b([]string{"c"}, "c", "clean…"),
 		Details:  b([]string{"enter", "right", "l"}, "enter", "items"),
 
-		Yes:  b([]string{"y", "enter"}, "y", "clean"),
+		WtAll:      b([]string{"a"}, "a", "pick everything verified"),
+		WtBranches: b([]string{"b"}, "b", "merged branches too on/off"),
+		WtFetch:    b([]string{"f"}, "f", "fetch, then check"),
+		WtRecheck:  b([]string{"r"}, "r", "check again"),
+		WtRemove:   b([]string{"c"}, "c", "remove…"),
+
+		Yes:  b([]string{"y", "enter"}, "y", "go ahead"),
 		No:   b([]string{"n", "esc", "q"}, "n/esc", "cancel"),
 		Stop: b([]string{"esc", "ctrl+c"}, "esc", "stop after this item"),
 		Done: b([]string{"enter", "esc", "q"}, "enter", "back"),
@@ -91,9 +101,11 @@ var _ help.KeyMap = keyHelp{}
 // helpKeys is what the footer shows for the screen in front of you.
 func (a *app) helpKeys() keyHelp {
 	k := a.keys
-	tabs := []key.Binding{k.Overview, k.Map, k.Explorer, k.Clean, k.NextTab}
+	tabs := []key.Binding{k.Overview, k.Map, k.Explorer, k.Clean, k.Worktrees, k.NextTab}
 	general := []key.Binding{k.Rescan, k.Private, k.Help, k.Quit}
 	switch {
+	case a.tab == tabWorktrees:
+		return a.wtHelpKeys(tabs)
 	case a.tab == tabOverview:
 		return keyHelp{
 			short: []key.Binding{k.Up, k.Down, k.SpotOpen, k.Map, k.Clean, k.Rescan, k.Help, k.Quit},

@@ -1,23 +1,17 @@
 package ui
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/stopwatch"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
 	"manage-disk/internal/clean"
 	"manage-disk/internal/human"
-	"manage-disk/internal/scan"
 )
 
 const (
@@ -29,15 +23,6 @@ const (
 	modeDone
 )
 
-type runState struct {
-	cur               clean.Event
-	done, total       int
-	skipped, failed   int
-	bytes, totalBytes int64
-	log               []string
-	stopping          bool
-}
-
 type cleanState struct {
 	mode    int
 	cursor  int // task under the cursor
@@ -45,15 +30,6 @@ type cleanState struct {
 	rowTask map[int]int
 
 	items list.Model // the open task's items, filterable
-
-	run    runState
-	bar    progress.Model
-	watch  stopwatch.Model
-	log    viewport.Model
-	cancel context.CancelFunc
-	ch     chan tea.Msg
-
-	summary *clean.Summary
 }
 
 func newCleanState() cleanState {
@@ -67,14 +43,7 @@ func newCleanState() cleanState {
 	l.KeyMap.NextPage = key.NewBinding(key.WithKeys("pgdown"))
 	l.KeyMap.ShowFullHelp.SetEnabled(false)
 	l.KeyMap.CloseFullHelp.SetEnabled(false)
-
-	vp := viewport.New(0, 0)
-	return cleanState{
-		items: l,
-		bar:   progress.New(progress.WithDefaultGradient()),
-		watch: stopwatch.NewWithInterval(time.Second),
-		log:   vp,
-	}
+	return cleanState{items: l}
 }
 
 // modal modes take every key.
@@ -179,34 +148,43 @@ func (a *app) cleanKey(msg tea.KeyMsg) tea.Cmd {
 	case modeConfirm:
 		switch {
 		case key.Matches(msg, k.Yes):
-			return a.startRun()
+			return a.startCleanRun()
 		case key.Matches(msg, k.No):
 			c.mode = modeList
 		case msg.Type == tea.KeyCtrlC:
 			return tea.Quit
 		}
 	case modeRunning:
-		if key.Matches(msg, k.Stop) && c.cancel != nil {
-			c.cancel()
-			c.run.stopping = true
-			return nil
-		}
-		var cmd tea.Cmd
-		c.log, cmd = c.log.Update(msg)
-		return cmd
+		return a.runKey(msg)
 	case modeDone:
-		switch {
-		case msg.Type == tea.KeyCtrlC:
-			return tea.Quit
-		case key.Matches(msg, k.Done):
-			c.mode, c.summary = modeList, nil
-		default:
-			var cmd tea.Cmd
-			c.log, cmd = c.log.Update(msg)
-			return cmd
+		back, cmd := a.doneKey(msg)
+		if back {
+			c.mode = modeList
 		}
+		return cmd
 	}
 	return nil
+}
+
+// startCleanRun cleans the ready items of every task that is switched on.
+func (a *app) startCleanRun() tea.Cmd {
+	var sels []clean.Selection
+	for _, ts := range a.tasks {
+		if !ts.enabled {
+			continue
+		}
+		var items []clean.Item
+		for _, it := range ts.items {
+			if it.Ready() {
+				items = append(items, it)
+			}
+		}
+		if len(items) > 0 {
+			sels = append(sels, clean.Selection{Task: ts.task, Items: items})
+		}
+	}
+	a.cl.mode = modeRunning
+	return a.startRun(tabClean, sels)
 }
 
 func (a *app) listKey(msg tea.KeyMsg) tea.Cmd {
@@ -291,9 +269,7 @@ func (a *app) cleanMouse(msg tea.MouseMsg) tea.Cmd {
 	c := &a.cl
 	switch c.mode {
 	case modeRunning, modeDone:
-		var cmd tea.Cmd
-		c.log, cmd = c.log.Update(msg)
-		return cmd
+		return a.runMouse(msg)
 	case modeDetail:
 		if msg.Action == tea.MouseActionPress {
 			switch msg.Button {
@@ -364,130 +340,6 @@ func (a *app) maybeConfirm() tea.Cmd {
 	}
 	a.cl.mode = modeConfirm
 	return nil
-}
-
-func (a *app) startRun() tea.Cmd {
-	var sels []clean.Selection
-	r := runState{}
-	for _, ts := range a.tasks {
-		if !ts.enabled {
-			continue
-		}
-		var items []clean.Item
-		for _, it := range ts.items {
-			if it.Ready() {
-				items = append(items, it)
-				r.totalBytes += it.Size
-				r.total++
-			}
-		}
-		if len(items) > 0 {
-			sels = append(sels, clean.Selection{Task: ts.task, Items: items})
-		}
-	}
-	c := &a.cl
-	c.mode, c.run = modeRunning, r
-	c.log.SetContent("")
-	ctx, cancel := context.WithCancel(context.Background())
-	c.cancel = cancel
-	ch := make(chan tea.Msg, 512)
-	c.ch = ch
-	env, dry := a.env, a.opts.DryRun
-	go func() {
-		sum := clean.Run(ctx, env, sels, dry, func(e clean.Event) { ch <- runEventMsg{e} })
-		ch <- runDoneMsg{sum}
-		close(ch)
-	}()
-	return tea.Batch(waitFor(ch), tick(), a.wake(), c.bar.SetPercent(0), c.watch.Reset(), c.watch.Start())
-}
-
-func waitFor(ch <-chan tea.Msg) tea.Cmd {
-	return func() tea.Msg {
-		msg, ok := <-ch
-		if !ok {
-			return nil
-		}
-		return msg
-	}
-}
-
-func (a *app) onRunEvent(ev clean.Event) tea.Cmd {
-	c := &a.cl
-	r := &c.run
-	label := ev.Task + ": " + ev.Item
-	switch ev.Kind {
-	case clean.EventStart:
-		r.cur = ev
-	case clean.EventDone:
-		r.done++
-		r.bytes += ev.Bytes
-		note := ""
-		if ev.Msg != "" {
-			note = " (" + ev.Msg + ")"
-		}
-		c.addLog(sGreen.Render("✓ ") + label + sDim.Render("  "+human.Bytes(ev.Bytes)+note))
-	case clean.EventSkip:
-		r.skipped++
-		c.addLog(sYellow.Render("– ") + label + sDim.Render("  skipped: "+ev.Msg))
-	case clean.EventFail:
-		r.failed++
-		c.addLog(sRed.Render("✗ ") + label + sRed.Render("  "+ev.Msg))
-	case clean.EventLog:
-		c.addLog(sDim.Render("    " + ev.Msg))
-	}
-	return tea.Batch(waitFor(c.ch), c.bar.SetPercent(r.fraction()))
-}
-
-func (r *runState) fraction() float64 {
-	switch {
-	case r.totalBytes > 0:
-		return min(1, float64(r.bytes)/float64(r.totalBytes))
-	case r.total > 0:
-		return float64(r.done+r.skipped+r.failed) / float64(r.total)
-	}
-	return 0
-}
-
-// addLog appends to the run log, following the newest line unless you have
-// scrolled up to read something.
-func (c *cleanState) addLog(s string) {
-	follow := c.log.AtBottom()
-	c.run.log = append(c.run.log, s)
-	if len(c.run.log) > 2000 {
-		c.run.log = c.run.log[len(c.run.log)-2000:]
-	}
-	c.log.SetContent(strings.Join(c.run.log, "\n"))
-	if follow {
-		c.log.GotoBottom()
-	}
-}
-
-func (a *app) onRunDone(sum clean.Summary) tea.Cmd {
-	c := &a.cl
-	c.mode, c.summary, c.cancel = modeDone, &sum, nil
-	cmds := []tea.Cmd{c.watch.Stop(), c.bar.SetPercent(1)}
-	if !sum.DryRun {
-		// Drop what was deleted from the tree; re-measure what commands cleaned.
-		a.env.EditTree(func(root *scan.Node) {
-			for _, cl := range sum.Cleaned {
-				if !cl.Command {
-					for _, p := range cl.Item.Paths {
-						root.Remove(p)
-					}
-				}
-			}
-		})
-		for _, cl := range sum.Cleaned {
-			// Only paths the scan read: re-measuring Docker's disk image would
-			// reach into a folder macOS guards with a dialog.
-			if cl.Command && a.res != nil && a.res.Root.Find(cl.Item.Path()) != nil {
-				cmds = append(cmds, a.remeasure(cl.Item.Path()))
-			}
-		}
-		a.refreshInsights()
-	}
-	cmds = append(cmds, a.loadVolume(), a.loadHistory(), a.discoverAll())
-	return tea.Batch(cmds...)
 }
 
 func (a *app) cleanHelpKeys(tabs []key.Binding) keyHelp {
@@ -658,73 +510,12 @@ func (a *app) confirmView() string {
 	return sBox.Render(strings.Join(lines, "\n"))
 }
 
-func (a *app) runningView(h int) string {
-	c := &a.cl
-	r := &c.run
-	title := " Cleaning…"
-	if a.opts.DryRun {
-		title = " Dry run…"
-	}
-	if r.stopping {
-		title = " Stopping after the current item…"
-	}
-	c.bar.Width = max(10, min(60, a.w-40))
-	var b strings.Builder
-	b.WriteString(a.spin.View() + sBold.Render(title) + sDim.Render("  "+c.watch.View()) + "\n\n")
-	b.WriteString(c.bar.View() + fmt.Sprintf("  %s / %s · %d of %d items\n",
-		human.Bytes(r.bytes), human.Bytes(r.totalBytes), r.done+r.skipped+r.failed, r.total))
-	if r.cur.Item != "" {
-		b.WriteString(sDim.Render("now: "+truncRight(r.cur.Task+" — "+r.cur.Item, max(10, a.w-6))) + "\n")
-	}
-	b.WriteString("\n")
-	c.log.Width, c.log.Height = a.w, max(1, h-6)
-	b.WriteString(c.log.View())
-	return b.String()
-}
-
-func (a *app) doneView(h int) string {
-	c := &a.cl
-	s := c.summary
-	var b strings.Builder
-	took := human.Duration(s.Ended.Sub(s.Started))
-	if s.DryRun {
-		b.WriteString(sBold.Render("Dry run finished in "+took) + "\n")
-		b.WriteString(fmt.Sprintf("Would clean %s, about %s. Nothing was deleted.\n", plural(len(s.Cleaned), "item"), human.Bytes(s.Estimated)))
-	} else {
-		b.WriteString(sBold.Render("Done in "+took) + "\n")
-		b.WriteString(fmt.Sprintf("Free space %s → %s  %s\n", human.Bytes(s.FreeBefore), human.Bytes(s.FreeAfter),
-			sGreen.Render("(+"+human.Bytes(max(0, s.Freed()))+")")))
-	}
-	verb := "cleaned"
-	if s.DryRun {
-		verb = "would be cleaned"
-	}
-	counts := sGreen.Render(fmt.Sprintf("✓ %d %s", len(s.Cleaned), verb))
-	if s.Skipped > 0 {
-		counts += "   " + sYellow.Render(fmt.Sprintf("– %d skipped", s.Skipped))
-	}
-	if s.Failed > 0 {
-		counts += "   " + sRed.Render(fmt.Sprintf("✗ %d failed", s.Failed))
-	}
-	b.WriteString(counts + "\n")
-	if s.Cancelled {
-		b.WriteString(sYellow.Render("Stopped early, as you asked.") + "\n")
-	}
-	if !s.DryRun && s.Freed() < s.Estimated/2 {
-		b.WriteString(sDim.Render("Less space came back than measured: pnpm's cloned files share blocks, and Docker returns space a few minutes later.") + "\n")
-	}
-	if s.LogPath != "" {
-		b.WriteString(sDim.Render("Log: "+tildePath(a.home, s.LogPath)) + "\n")
-	}
-	b.WriteString("\n")
-	c.log.Width, c.log.Height = a.w, max(1, h-lipgloss.Height(b.String()))
-	b.WriteString(c.log.View())
-	return b.String()
-}
-
 func plural(n int, word string) string {
 	if n == 1 {
 		return "1 " + word
+	}
+	if strings.HasSuffix(word, "ch") || strings.HasSuffix(word, "sh") || strings.HasSuffix(word, "s") || strings.HasSuffix(word, "x") {
+		return fmt.Sprintf("%d %ses", n, word)
 	}
 	return fmt.Sprintf("%d %ss", n, word)
 }

@@ -34,10 +34,11 @@ const (
 	tabMap
 	tabExplorer
 	tabClean
+	tabWorktrees
 	tabCount
 )
 
-var tabNames = []string{"1 Overview", "2 Map", "3 Explorer", "4 Clean"}
+var tabNames = []string{"1 Overview", "2 Map", "3 Explorer", "4 Clean", "5 Worktrees"}
 
 // taskState is a cleanup task plus what discovery found for it.
 type taskState struct {
@@ -139,6 +140,8 @@ type app struct {
 	exp      explorerState
 	mp       mapState
 	cl       cleanState
+	wt       wtState
+	run      runPanel
 }
 
 // Model is the Bubble Tea model. It wraps a pointer so helpers can mutate state.
@@ -164,6 +167,8 @@ func New(env *clean.Env, opts Options) Model {
 	a.exp = newExplorerState(env.Home)
 	a.mp.nested = true
 	a.cl = newCleanState()
+	a.wt = newWtState()
+	a.run = newRunPanel()
 	return Model{a}
 }
 
@@ -172,12 +177,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return m, m.a.update(m
 func (m Model) View() string                            { return m.a.view() }
 
 func (a *app) init() tea.Cmd {
-	return tea.Batch(a.loadVolume(), a.loadHistory(), a.startScan(), a.discoverAll())
+	return tea.Batch(a.loadVolume(), a.loadHistory(), a.startScan(), a.discoverAll(), a.auditWorktrees(false))
 }
 
 // busy reports whether anything on screen is still in motion.
 func (a *app) busy() bool {
-	if a.scanning || a.cl.mode == modePreparing || a.cl.mode == modeRunning {
+	if a.scanning || a.run.active || a.cl.mode == modePreparing || a.wt.loading {
 		return true
 	}
 	for _, ts := range a.tasks {
@@ -216,19 +221,25 @@ func (a *app) update(msg tea.Msg) tea.Cmd {
 		a.spin, cmd = a.spin.Update(msg)
 		return cmd
 	case progress.FrameMsg:
-		m, cmd := a.cl.bar.Update(msg)
-		a.cl.bar = m.(progress.Model)
+		m, cmd := a.run.bar.Update(msg)
+		a.run.bar = m.(progress.Model)
 		return cmd
 	case stopwatch.TickMsg, stopwatch.StartStopMsg, stopwatch.ResetMsg:
 		var cmd tea.Cmd
-		a.cl.watch, cmd = a.cl.watch.Update(msg)
+		a.run.watch, cmd = a.run.watch.Update(msg)
 		return cmd
-	case list.FilterMatchesMsg: // the item list filters in the background
+	case list.FilterMatchesMsg: // lists filter in the background; the one on screen asked
 		var cmd tea.Cmd
-		a.cl.items, cmd = a.cl.items.Update(msg)
+		if a.tab == tabWorktrees {
+			a.wt.list, cmd = a.wt.list.Update(msg)
+		} else {
+			a.cl.items, cmd = a.cl.items.Update(msg)
+		}
 		return cmd
+	case wtAuditMsg:
+		return a.onWorktreeAudit(msg)
 	case tickMsg:
-		if a.scanning || a.cl.mode == modeRunning {
+		if a.scanning || a.run.active {
 			return tick()
 		}
 	case volMsg:
@@ -275,6 +286,8 @@ func (a *app) typing() bool {
 		return a.exp.filtering
 	case tabClean:
 		return a.cl.mode == modeDetail && a.cl.items.SettingFilter()
+	case tabWorktrees:
+		return a.wt.mode == wtList && a.wt.list.SettingFilter()
 	}
 	return false
 }
@@ -285,9 +298,14 @@ func (a *app) onKey(msg tea.KeyMsg) tea.Cmd {
 	switch {
 	case a.tab == tabClean && a.cl.modal():
 		return a.cleanKey(msg)
+	case a.tab == tabWorktrees && a.wt.mode != wtList:
+		return a.wtKey(msg)
 	case a.typing():
-		if a.tab == tabExplorer {
+		switch a.tab {
+		case tabExplorer:
 			return a.explorerKey(msg)
+		case tabWorktrees:
+			return a.wtKey(msg)
 		}
 		return a.cleanKey(msg)
 	case key.Matches(msg, k.Quit):
@@ -310,15 +328,20 @@ func (a *app) onKey(msg tea.KeyMsg) tea.Cmd {
 	case key.Matches(msg, k.Clean):
 		a.setTab(tabClean)
 		return nil
+	case key.Matches(msg, k.Worktrees):
+		a.setTab(tabWorktrees)
+		return nil
 	case key.Matches(msg, k.NextTab):
 		a.setTab((a.tab + 1) % tabCount)
 		return nil
 	case key.Matches(msg, k.PrevTab):
 		a.setTab((a.tab + tabCount - 1) % tabCount)
 		return nil
-	case a.tab != tabClean && key.Matches(msg, k.Rescan):
+	case a.tab == tabClean || a.tab == tabWorktrees:
+		// these tabs give r and p their own meaning
+	case key.Matches(msg, k.Rescan):
 		return tea.Batch(a.startScan(), a.discoverAll())
-	case a.tab != tabClean && key.Matches(msg, k.Private):
+	case key.Matches(msg, k.Private):
 		a.opts.IncludePrivate = !a.opts.IncludePrivate
 		if a.opts.IncludePrivate {
 			a.flash = "Rescanning with Desktop, Documents, Downloads, app containers… — macOS may ask for permission"
@@ -332,6 +355,8 @@ func (a *app) onKey(msg tea.KeyMsg) tea.Cmd {
 		return a.mapKey(msg)
 	case tabExplorer:
 		return a.explorerKey(msg)
+	case tabWorktrees:
+		return a.wtKey(msg)
 	default:
 		return a.cleanKey(msg)
 	}
@@ -357,7 +382,7 @@ func (a *app) setTab(t int) {
 func (a *app) onMouse(msg tea.MouseMsg) tea.Cmd {
 	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft && msg.Y == 1 {
 		for _, h := range a.tabHits {
-			if msg.X >= h.x0 && msg.X < h.x1 && !(a.tab == tabClean && a.cl.modal()) {
+			if msg.X >= h.x0 && msg.X < h.x1 && !(a.tab == tabClean && a.cl.modal()) && !(a.tab == tabWorktrees && a.wt.mode != wtList) {
 				a.setTab(h.tab)
 				return nil
 			}
@@ -370,6 +395,8 @@ func (a *app) onMouse(msg tea.MouseMsg) tea.Cmd {
 		return a.explorerMouse(msg)
 	case tabClean:
 		return a.cleanMouse(msg)
+	case tabWorktrees:
+		return a.wtMouse(msg)
 	default:
 		return a.overviewMouse(msg)
 	}
@@ -531,6 +558,8 @@ func (a *app) view() string {
 		body = a.mapView(bodyH)
 	case tabExplorer:
 		body = a.explorerView(bodyH)
+	case tabWorktrees:
+		body = a.worktreesView(bodyH)
 	default:
 		body = a.cleanView(bodyH)
 	}
