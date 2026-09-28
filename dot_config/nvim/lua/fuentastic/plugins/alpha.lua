@@ -28,12 +28,19 @@ return {
 				-- }
 			},
 			{
-				"Topgeschenken",
-				"a",
+				"Hardly Simple",
+				"t",
 				{
-					"/Users/miguelfuentes/projects/topgeschenken",
+					"/Users/miguelfuentes/projects/hardlysimple",
 				},
 			},
+			-- {
+			-- 	"Topgeschenken",
+			-- 	"a",
+			-- 	{
+			-- 		"/Users/miguelfuentes/projects/topgeschenken",
+			-- 	},
+			-- },
 			{
 				"Enmeduranki", -- title
 				"r", -- shortcuts prefix
@@ -41,19 +48,19 @@ return {
 					"/Users/miguelfuentes/projects/enmeduranki", -- path
 				},
 			},
-			{
-				"Palabras", -- title
-				"p", -- shortcuts prefix
-				{
-					"/Users/miguelfuentes/projects/palabras", -- path
-					"/other/root/directory/",
-				},
-			},
-			{
-				"Lizzr",
-				"b",
-				"/Users/miguelfuentes/projects/lizzr",
-			},
+			-- {
+			-- 	"Palabras", -- title
+			-- 	"p", -- shortcuts prefix
+			-- 	{
+			-- 		"/Users/miguelfuentes/projects/palabras", -- path
+			-- 		"/other/root/directory/",
+			-- 	},
+			-- },
+			-- {
+			-- 	"Lizzr",
+			-- 	"b",
+			-- 	"/Users/miguelfuentes/projects/lizzr",
+			-- },
 		}
 
 		-- use with the rest of sections for alpha.nvim, with throttling to avoid reading files on each redraw
