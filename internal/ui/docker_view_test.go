@@ -178,3 +178,52 @@ func TestDockerNotRunning(t *testing.T) {
 		t.Error("nothing to remove when Docker is down")
 	}
 }
+
+func TestDockerSuggestPicksTheCheapestWayToTheTarget(t *testing.T) {
+	// 17.7 GiB free; 1.2 GiB more is covered by what costs nothing.
+	target := int64(18962370560) + 1200<<20
+	a, fake := dockerApp(t, Options{DockerTarget: target})
+	press(t, a, "6", "n")
+	if out := a.dkHeader(); !strings.Contains(out, "Target 18.8 GiB free: 1.2 GiB to go · s picks the cheapest way there: 2 resources") {
+		t.Errorf("header should show the target and what s would pick:\n%s", out)
+	}
+	press(t, a, "s")
+	var picked []string
+	for k, on := range a.dk.chosen {
+		if on {
+			picked = append(picked, k)
+		}
+	}
+	slices.Sort(picked)
+	if want := []string{"build cache:stale", "image:sha256:dangling"}; !slices.Equal(picked, want) {
+		t.Errorf("s picked %v, want %v", picked, want)
+	}
+	if !strings.Contains(a.flash, "Picked the cheapest way to 18.8 GiB free") {
+		t.Errorf("flash %q", a.flash)
+	}
+	if !strings.Contains(a.dkHeader(), "your picks get there") {
+		t.Errorf("header:\n%s", a.dkHeader())
+	}
+	press(t, a, "c")
+	if out := a.view(); !strings.Contains(out, "That meets the 18.8 GiB target") {
+		t.Errorf("confirm should say the target is met:\n%s", out)
+	}
+	press(t, a, "n")
+	if len(fake.Changes()) > 0 {
+		t.Errorf("s only picks; it removes nothing: %v", fake.Changes())
+	}
+}
+
+func TestDockerSuggestNeverPicksVolumesWhenShort(t *testing.T) {
+	a, _ := dockerApp(t, Options{}) // the default 22 GiB: 4.3 GiB to go, 1.7 GB removable
+	press(t, a, "6", "s")
+	if a.dk.chosen["volume:feature_data"] {
+		t.Error("a plan must never pick a volume")
+	}
+	if !strings.Contains(a.flash, "short of 22.0 GiB") || !strings.Contains(a.flash, "feature_data") {
+		t.Errorf("flash should say it's short and name the volume that could cover it: %q", a.flash)
+	}
+	if out := a.dkHeader(); !strings.Contains(out, "short") || !strings.Contains(out, "Target 22.0 GiB free") {
+		t.Errorf("header:\n%s", out)
+	}
+}

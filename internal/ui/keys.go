@@ -26,6 +26,7 @@ type keyMap struct {
 
 	PickVerified, Recheck, Remove key.Binding // the worktrees and Docker tabs
 	WtBranches, WtFetch           key.Binding
+	Suggest                       key.Binding
 }
 
 func newKeyMap() keyMap {
@@ -81,6 +82,7 @@ func newKeyMap() keyMap {
 		Remove:       b([]string{"c"}, "c", "remove…"),
 		WtBranches:   b([]string{"b"}, "b", "merged branches too on/off"),
 		WtFetch:      b([]string{"f"}, "f", "fetch, then check"),
+		Suggest:      b([]string{"s"}, "s", "pick the cheapest way to the target"),
 
 		Yes:  b([]string{"y", "enter"}, "y", "go ahead"),
 		No:   b([]string{"n", "esc", "q"}, "n/esc", "cancel"),

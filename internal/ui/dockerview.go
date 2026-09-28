@@ -38,6 +38,10 @@ type dkState struct {
 	gen     int
 	before  docker.Disk // Docker's disk as the last run started
 	ranAt   time.Time
+	plan    docker.Plan // the cheapest way to the target free space
+	// partial holds, by key, the build cache s picked to prune only in part;
+	// picking it by hand prunes it all again.
+	partial map[string]docker.Pick
 }
 
 type dkAuditMsg struct {
@@ -46,7 +50,8 @@ type dkAuditMsg struct {
 }
 
 func newDkState() dkState {
-	return dkState{list: newPickList(dkDelegate{}, "resource", "resources"), chosen: map[string]bool{}, seen: map[string]bool{}}
+	return dkState{list: newPickList(dkDelegate{}, "resource", "resources"), chosen: map[string]bool{}, seen: map[string]bool{},
+		partial: map[string]docker.Pick{}}
 }
 
 // auditDocker looks at everything Docker keeps, in the background.
@@ -66,6 +71,7 @@ func (a *app) onDockerAudit(msg dkAuditMsg) tea.Cmd {
 		return nil
 	}
 	d.loading, d.rep = false, msg.rep
+	d.plan = docker.Suggest(d.rep, a.opts.DockerTarget)
 	d.index = make(map[string]int, len(d.rep.Resources))
 	for i, r := range d.rep.Resources {
 		d.index[r.Key()] = i
@@ -164,7 +170,7 @@ func (a *app) dkPicked() []docker.Resource {
 	var out []docker.Resource
 	for _, r := range a.dk.rep.Resources {
 		if a.dk.chosen[r.Key()] && r.Verdict.Removable() {
-			out = append(out, r)
+			out = append(out, a.dkEffective(r))
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool {
@@ -174,6 +180,22 @@ func (a *app) dkPicked() []docker.Resource {
 		return out[i].Until > out[j].Until // stale cache before the rest of it
 	})
 	return out
+}
+
+// dkEffective is r as a removal would take it: build cache a plan prunes only
+// in part shows, and removes, just that part, measured again from the latest
+// look since the cut is a moment, not a list.
+func (a *app) dkEffective(r docker.Resource) docker.Resource {
+	pk, ok := a.dk.partial[r.Key()]
+	if !ok || !a.dk.chosen[r.Key()] {
+		return r
+	}
+	size, n := r.Cut(pk.Before)
+	r.Name += fmt.Sprintf(" (the oldest %d of %d records)", n, r.Records)
+	r.Reasons = []string{fmt.Sprintf("only what no build used since %s: the builds since keep their cache", human.Ago(time.Now(), pk.Before)),
+		fmt.Sprintf("the oldest %d of %d records", n, r.Records)}
+	r.Before, r.Size, r.Records, r.LastUsed = pk.Before, size, n, pk.Before
+	return r
 }
 
 func (a *app) dkChosen() (n int, size int64) {
@@ -202,7 +224,8 @@ func (dkDelegate) Update(tea.Msg, *list.Model) tea.Cmd { return nil }
 
 func (dkDelegate) Render(out io.Writer, m list.Model, index int, li list.Item) {
 	e := li.(dkEntry)
-	r, a := e.r, e.a
+	a := e.a
+	r := a.dkEffective(e.r)
 	width := m.Width()
 	marker := "  "
 	if index == m.Index() {
@@ -288,6 +311,7 @@ func (a *app) dkKey(msg tea.KeyMsg) tea.Cmd {
 		switch {
 		case !hasSel:
 		case e.r.Verdict.Removable():
+			delete(d.partial, e.r.Key()) // by hand, a pick is all of it
 			d.pick(e.r.Key(), !d.chosen[e.r.Key()])
 		default:
 			a.flash = "In use: " + strings.Join(e.r.Reasons, "; ")
@@ -302,6 +326,9 @@ func (a *app) dkKey(msg tea.KeyMsg) tea.Cmd {
 		for p := range d.chosen {
 			d.chosen[p] = false
 		}
+		clear(d.partial)
+	case key.Matches(msg, k.Suggest):
+		a.dkSuggest()
 	case key.Matches(msg, k.Recheck):
 		a.env.ResetProcs()
 		return a.auditDocker()
@@ -318,6 +345,49 @@ func (a *app) dkKey(msg tea.KeyMsg) tea.Cmd {
 		return cmd
 	}
 	return nil
+}
+
+// dkSuggest replaces your picks with the plan for the target, for you to look
+// over before c.
+func (a *app) dkSuggest() {
+	d, p := &a.dk, a.dk.plan
+	target := human.Bytes(p.Target)
+	switch {
+	case p.Err != "":
+		a.flash = "No plan: " + p.Err
+		return
+	case p.Reached():
+		a.flash = "Docker's disk already has the " + target + " target free."
+		return
+	}
+	for k := range d.chosen {
+		d.chosen[k] = false
+	}
+	clear(d.partial)
+	for _, pk := range p.Picks {
+		d.chosen[pk.Key] = true
+		if !pk.Before.IsZero() {
+			d.partial[pk.Key] = pk
+		}
+	}
+	d.settle()
+	if p.Short == 0 {
+		a.flash = fmt.Sprintf("Picked the cheapest way to %s free: %s, about %s. c removes them.",
+			target, plural(len(p.Picks), "resource"), human.Bytes(p.Frees))
+		return
+	}
+	var vols []string
+	for _, k := range p.Volumes[:min(3, len(p.Volumes))] {
+		if r, ok := d.get(k); ok {
+			vols = append(vols, r.Name+" "+human.Bytes(r.Size))
+		}
+	}
+	a.flash = fmt.Sprintf("Picked everything but volumes, about %s: still %s short of %s.", human.Bytes(p.Frees), human.Bytes(p.Short), target)
+	if len(vols) > 0 {
+		a.flash += " Volumes are yours to pick (" + strings.Join(vols, ", ") + "), or raise Docker's disk limit."
+	} else {
+		a.flash += " Raise Docker's disk limit: Settings → Resources."
+	}
 }
 
 // dkPrepare looks at Docker again, so nothing picked earlier is removed after
@@ -371,10 +441,10 @@ func (a *app) dkHelpKeys(tabs []key.Binding) keyHelp {
 		return keyHelp{short: []key.Binding{k.Done}}
 	}
 	return keyHelp{
-		short: []key.Binding{k.Up, k.Down, k.Toggle, k.PickVerified, k.Remove, k.Filter, k.Recheck, k.Help},
+		short: []key.Binding{k.Up, k.Down, k.Toggle, k.Suggest, k.PickVerified, k.Remove, k.Filter, k.Help},
 		full: [][]key.Binding{
 			{k.Up, k.Down, k.Toggle, k.PickVerified, k.None, k.Filter},
-			{k.Recheck, k.Reveal, k.Remove},
+			{k.Suggest, k.Recheck, k.Reveal, k.Remove},
 			tabs, {k.Help, k.Quit},
 		},
 	}
@@ -419,9 +489,9 @@ func (a *app) dockerView(h int) string {
 	var detail string
 	if e, ok := d.list.SelectedItem().(dkEntry); ok {
 		if detailW > 0 {
-			detail = a.dkDetail(e.r, detailW, bodyH)
+			detail = a.dkDetail(a.dkEffective(e.r), detailW, bodyH)
 		} else {
-			detail = a.dkDetail(e.r, a.w, 12)
+			detail = a.dkDetail(a.dkEffective(e.r), a.w, 12)
 			bodyH -= lipgloss.Height(detail)
 		}
 	}
@@ -481,7 +551,35 @@ func (a *app) dkHeader() string {
 		third += "  " + sDryBadge.Render("DRY RUN")
 	}
 	fit := lipgloss.NewStyle().MaxWidth(a.w)
-	return fit.Render(line) + "\n" + fit.Render(second) + "\n" + fit.Render(third)
+	out := fit.Render(line) + "\n" + fit.Render(second) + "\n" + fit.Render(third)
+	if t := a.dkTargetLine(size); t != "" {
+		out += "\n" + fit.Render(t)
+	}
+	return out
+}
+
+// dkTargetLine says how far Docker's disk is from the target, and what s would
+// pick to get there.
+func (a *app) dkTargetLine(picked int64) string {
+	p := a.dk.plan
+	if p.Err != "" {
+		return ""
+	}
+	line := sHeading.Render("Target") + sDim.Render(" "+human.Bytes(p.Target)+" free: ")
+	if p.Reached() {
+		return line + sGreen.Render("met")
+	}
+	line += sBold.Render(human.Bytes(p.Need())) + sDim.Render(" to go")
+	switch {
+	case picked >= p.Need():
+		line += sGreen.Render(" · your picks get there")
+	case p.Short > 0:
+		line += sDim.Render(" · everything but volumes frees about "+human.Bytes(p.Frees)+", ") +
+			sYellow.Render(human.Bytes(p.Short)+" short") + sDim.Render(" · s picks all of it")
+	default:
+		line += sDim.Render(fmt.Sprintf(" · s picks the cheapest way there: %s, about %s", plural(len(p.Picks), "resource"), human.Bytes(p.Frees)))
+	}
+	return line
 }
 
 // dkDetail lays out all the evidence about one resource.
@@ -617,7 +715,15 @@ func (a *app) dkConfirmView() string {
 	}
 	lines = append(lines, "")
 	if disk := a.dk.rep.Disk; disk.OK() {
-		lines = append(lines, fmt.Sprintf("Docker's disk: about %s → %s free.", human.Bytes(disk.Free), human.Bytes(disk.Free+size)))
+		line := fmt.Sprintf("Docker's disk: about %s → %s free.", human.Bytes(disk.Free), human.Bytes(disk.Free+size))
+		switch target := a.opts.DockerTarget; {
+		case disk.Free >= target:
+		case disk.Free+size >= target:
+			line += sGreen.Render(" That meets the " + human.Bytes(target) + " target.")
+		default:
+			line += sYellow.Render(" Short of the " + human.Bytes(target) + " target.")
+		}
+		lines = append(lines, line)
 	}
 	if volumes > 0 {
 		lines = append(lines, sRed.Render(fmt.Sprintf("%s: the data in them is gone for good.", plural(volumes, "volume"))))

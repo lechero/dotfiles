@@ -19,14 +19,16 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"manage-disk/internal/clean"
+	"manage-disk/internal/docker"
 	"manage-disk/internal/human"
 	"manage-disk/internal/scan"
 )
 
 // Options are set from the command line.
 type Options struct {
-	DryRun         bool // delete and run nothing; show what would happen
-	IncludePrivate bool // also scan Desktop, Documents, Downloads… (macOS may ask)
+	DryRun         bool  // delete and run nothing; show what would happen
+	IncludePrivate bool  // also scan Desktop, Documents, Downloads… (macOS may ask)
+	DockerTarget   int64 // free space the Docker tab plans for (docker.DefaultTarget when 0)
 }
 
 const (
@@ -151,6 +153,9 @@ type Model struct{ a *app }
 
 // New builds the interface for env.
 func New(env *clean.Env, opts Options) Model {
+	if opts.DockerTarget <= 0 {
+		opts.DockerTarget = docker.DefaultTarget
+	}
 	a := &app{
 		env:      env,
 		home:     env.Home,
