@@ -50,7 +50,7 @@ tasks:
       - ./{{.BIN}} worktrees {{.CLI_ARGS}}
 
   docker:
-    desc: "Docker's own disk, and a verdict on every image, container and volume, changing nothing"
+    desc: "Docker's own disk, a verdict on everything in it, and the cheapest way to 22 GiB free (task docker -- --target 30), changing nothing"
     deps: [build]
     cmds:
       - ./{{.BIN}} docker {{.CLI_ARGS}}
