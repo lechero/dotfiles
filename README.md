@@ -16,17 +16,30 @@ machines without Task.
 
 ## Tabs
 
-**1 Overview.** Free space, a breakdown by category (projects, Docker, caches,
-toolchains, AI models, app data…), the biggest spots, and what is cleanable
-right now.
+**1 Overview.** Free space, and a stacked bar of where it goes by category
+(projects, Docker, caches, toolchains, AI models, app data…). The biggest
+spots are a table: pick one with ↑↓ and press enter to see it on the map.
+Once a few days of samples exist, a sparkline of free space over time joins
+the status line.
 
-**2 Explorer.** Drill into any folder, largest first, like ncdu. It's
-read-only; `o` reveals the selected item in Finder. Folders a cleanup would
-delete are tagged `T1`/`T2`.
+**2 Map.** A treemap of the folder you are in: each block's area is its share
+of the disk, and each big block shows what's inside it. Arrow keys move
+between blocks, enter zooms in, and ⌫ or esc zooms out. `v` switches the
+nested blocks off, `o` reveals the block in Finder, and ♻ marks what a
+cleanup would delete. With the mouse, click to select, click again to zoom
+in, and right-click to zoom out.
 
-**3 Clean.** The cleanup catalogue. Space switches a task on or off, enter
-opens its items so you can pick them one by one, and `c` cleans. `d` toggles
-dry run.
+**3 Explorer.** The same folder as a list, largest first, like ncdu. It's
+read-only. `/` filters by name and `o` reveals in Finder. The map and the
+explorer hand the selection to each other, and the bars use the map's colours.
+
+**4 Clean.** The cleanup catalogue. Space switches a task on or off, enter
+opens its items (filter them with `/`), and `c` cleans. A run shows a progress
+bar, a stopwatch and a log you can scroll back through. `d` toggles dry run.
+
+`?` shows every key for the screen you're on, and tabs are clickable. With the
+mouse on, most terminals need ⌥ (iTerm: ⌥, Terminal.app: fn) held down to
+select text.
 
 ## What it cleans
 
@@ -102,6 +115,17 @@ minutes after a prune. The summary shows the real change in free space.
 main.go, report.go      entry point, the `report` command
 internal/scan           parallel walker, tree, categories, hotspots, privacy rules
 internal/clean          task catalogue, process snapshot, guard, runner, history
-internal/ui             Bubble Tea model: overview, explorer, clean tab
+internal/treemap        squarified treemap layout, snapped to terminal cells
+internal/ui             Bubble Tea model: overview, map, explorer, clean tab
 internal/human          sizes, counts and times for people
 ```
+
+The interface is built from [bubbles](https://github.com/charmbracelet/bubbles):
+`key` and `help` for the key bindings and footer, `table` for the biggest
+spots, `list` for a task's items, `textinput` for the explorer filter,
+`progress` for the disk gauge, scan and clean bars, `viewport` for the run
+log, `stopwatch` for its timer, and `spinner` while anything is measuring.
+
+The interface also keeps two small files next to the run history in
+`~/Library/Application Support/manage-disk`: the last scan's file count, which
+gives the next scan a real progress bar, and free-space samples for the trend.
