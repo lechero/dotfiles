@@ -30,6 +30,7 @@ type Item struct {
 	Selected bool
 	Blocked  string // why it cannot be cleaned right now; empty when it can
 	Note     string // context for the decision: "newest v22, kept"
+	Data     any    // whatever a task's Run needs beyond the paths
 }
 
 // Path is the item's main path.
