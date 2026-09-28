@@ -8,7 +8,7 @@ task dry        # build and open it with deletion switched off
 task run        # build and open it for real
 task report     # print the overview and cleanup plan; changes nothing
 task worktrees  # list every worktree with a verdict; changes nothing
-task docker     # Docker's own disk, and a verdict on everything in it; changes nothing
+task docker     # Docker's own disk, a verdict on everything in it, and the cheapest way to 22 GiB free; changes nothing
 task install    # copy the binary to ~/.local/bin
 ```
 
@@ -51,7 +51,9 @@ build runs out of. Below it, every image, container, volume and slice of build
 cache has a verdict and the evidence behind it, most removable first and
 largest first. See [Docker](#docker) for how verdicts are decided. `space`
 picks, `a` picks everything verified, and `c` removes after a fresh look and
-a confirm. The header shows what your picks would leave free.
+a confirm. The header shows what your picks would leave free, and how far
+Docker's disk is from its target (22 GiB free, or `--target N`). `s` picks
+the cheapest way there.
 
 `?` shows every key for the screen you're on, and tabs are clickable. With the
 mouse on, most terminals need ⌥ (iTerm: ⌥, Terminal.app: fn) held down to
@@ -156,6 +158,36 @@ it. A removal goes containers → images → volumes → build cache. Build cach
 goes last because images built here share their layers with it: removing
 such an image frees little until the cache is pruned too, and the confirm
 dialog says so when you haven't picked it.
+
+### Making room
+
+`s` in the tab, and the end of `manage-disk docker`, suggest the cheapest way
+to get Docker's disk to its target: 22 GiB free unless you pass `--target N`
+(GiB). Cheapest means losing as little as possible, and every byte removed
+costs according to what brings it back:
+
+| Cost per byte | What |
+|---|---|
+| nothing | unused and orphan resources |
+| ×1 | old: nothing used it for a month, and a pull brings it back |
+| ×2 | recent build cache: the next build of what made it starts colder |
+| ×3 | stopped containers, and images a pull brings back |
+| ×8 | images only a rebuild brings back |
+
+Everything that costs nothing goes. Then it keeps taking whatever costs least
+per byte still missing, so a 3 GiB image doesn't go when 300 MiB would do.
+Finally it drops any pick the others made unnecessary. It aims 5% past the
+target, because Docker's sizes are rounded.
+
+Recent build cache goes **oldest first**, and only as much as the target
+needs. The prune is `builder prune --filter until=…`, cut between two builds,
+so the builds since keep their cache. An image built here takes the whole
+cache prune with it, because only that frees its layers.
+
+**It never picks a volume.** When everything else isn't enough, it picks all
+of that, says how much is still missing, and names the volumes that would
+cover the rest. Deleting those, or raising Docker's disk limit, is your call.
+`s` only picks: `c` still checks again and asks before anything goes.
 
 **Nothing is forced.** `docker rm`, `rmi` and `volume rm` run without `-f`.
 Docker itself refuses a container that started, or an image or volume a
