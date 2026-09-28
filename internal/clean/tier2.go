@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
+
+	"manage-disk/internal/docker"
 )
 
 func dockerTask() *Task {
@@ -47,7 +47,7 @@ func dockerTask() *Task {
 				for _, line := range strings.Split(out, "\n") {
 					var row struct{ Type, Size, Reclaimable string }
 					if json.Unmarshal([]byte(line), &row) == nil && row.Type == "Build Cache" {
-						it.Size = parseDockerSize(row.Reclaimable)
+						it.Size = docker.ParseSize(row.Reclaimable)
 						it.Note = "build cache " + row.Size + ", reclaimable " + row.Reclaimable + "; never touches volumes"
 					}
 				}
@@ -64,28 +64,6 @@ func dockerTask() *Task {
 			return nil
 		},
 	}
-}
-
-// parseDockerSize reads Docker's decimal sizes: "16.4GB (51%)", "512kB", "0B".
-func parseDockerSize(s string) int64 {
-	s = strings.TrimSpace(s)
-	if i := strings.IndexByte(s, ' '); i >= 0 {
-		s = s[:i]
-	}
-	units := []struct {
-		suffix string
-		mult   float64
-	}{{"TB", 1e12}, {"GB", 1e9}, {"MB", 1e6}, {"kB", 1e3}, {"KB", 1e3}, {"B", 1}}
-	for _, u := range units {
-		if num, ok := strings.CutSuffix(s, u.suffix); ok {
-			f, err := strconv.ParseFloat(num, 64)
-			if err != nil {
-				return 0
-			}
-			return int64(math.Round(f * u.mult))
-		}
-	}
-	return 0
 }
 
 func pnpmStoresTask() *Task {

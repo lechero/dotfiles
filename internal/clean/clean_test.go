@@ -274,15 +274,6 @@ func TestRustTargetsNeedCargoTag(t *testing.T) {
 	}
 }
 
-func TestParseDockerSize(t *testing.T) {
-	cases := map[string]int64{"16.4GB (51%)": 16_400_000_000, "512kB": 512_000, "0B": 0, "1.5MB": 1_500_000, "junk": 0}
-	for in, want := range cases {
-		if got := parseDockerSize(in); got != want {
-			t.Errorf("parseDockerSize(%q) = %d, want %d", in, got, want)
-		}
-	}
-}
-
 func TestResolveNodeSpec(t *testing.T) {
 	vs := listNodeVersions("") // empty
 	if resolveNodeSpec("20", vs) != "" {
