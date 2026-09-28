@@ -7,6 +7,7 @@ Where your disk space goes, and the cleanups that are safe to repeat. It's a
 task dry        # build and open it with deletion switched off
 task run        # build and open it for real
 task report     # print the overview and cleanup plan; changes nothing
+task worktrees  # list every worktree with a verdict; changes nothing
 task install    # copy the binary to ~/.local/bin
 ```
 
@@ -36,6 +37,13 @@ explorer hand the selection to each other, and the bars use the map's colours.
 **4 Clean.** The cleanup catalogue. Space switches a task on or off, enter
 opens its items (filter them with `/`), and `c` cleans. A run shows a progress
 bar, a stopwatch and a log you can scroll back through. `d` toggles dry run.
+
+**5 Worktrees.** Every linked git worktree of the repos under `~/projects`
+(`.claude/worktrees`, `.worktrees`, `~/.codex/worktrees`…), each with a verdict
+and the evidence behind it. See [Worktrees](#worktrees) for how that is
+decided. `space` picks, `a` picks everything verified, `c` removes (after a
+fresh check and a confirm), and `b` also deletes the branches of merged work.
+`f` fetches every repo first, so "merged" is judged against today's main.
 
 `?` shows every key for the screen you're on, and tabs are clickable. With the
 mouse on, most terminals need ⌥ (iTerm: ⌥, Terminal.app: fn) held down to
@@ -68,6 +76,41 @@ switch them on.
 | Go module cache | `go clean -modcache` |
 | Old Node.js versions | nvm and nvm.fish. It preselects versions past Node's end of life and superseded patches, but never your default or a version holding global tools. |
 | Android emulators | AVDs, preselected when unused for 30 days |
+
+## Worktrees
+
+Removing a worktree with `git worktree remove` keeps its branch and every
+commit. What removal can lose is work that never became a commit, and the
+checkout a program is running in. So each worktree gets a verdict:
+
+| Verdict | When | Picked for you |
+|---|---|---|
+| **merged** | its PR is merged (and HEAD is the PR's head or behind it), or every commit's change is already in `origin/main` | yes |
+| **old** | clean, every commit pushed, no open PR, untouched for 30 days | yes |
+| **stale** | its folder is gone; git still lists it (removal = `git worktree prune`) | yes |
+| **review** | removable without losing commits, but something needs a look: an open or closed-unmerged PR, commits held only here, a commit after the merged PR, or ignored files that aren't build output (`.env` that differs from the main checkout's, local data) | no |
+| **keep** | a process works in it, it's locked, it has changed or untracked files, or it's outside your home. It can't be picked | — |
+
+Where the evidence comes from:
+
+- **git:** `git status --ignored`, `rev-list` against the default branch, and
+  `git cherry`, which catches rebased and cherry-picked commits.
+- **GitHub:** PR state and head commit, via `gh pr list --head <branch>`. A
+  squash merge only shows up there; `git cherry` still sees its commits as
+  unique.
+- **Processes:** every process's working directory, from `lsof`, which is how
+  live Claude and Codex sessions are found.
+
+Build output doesn't count as ignored work: `node_modules`, `.next`,
+`test-results`, `.husky/_` and similar. Neither does a `.env` byte-identical
+to the main checkout's copy.
+
+**Removal is never forced.** The run uses `git worktree remove` without
+`--force`, so git itself refuses a worktree that picked up changes after the
+check. Everything is checked again right before the confirm dialog. Branches
+stay unless you press `b`, and even then only the branches of **merged**
+worktrees are deleted. Git never prompts: a fetch whose SSH key wants a
+passphrase fails instead of asking.
 
 ## Safety
 

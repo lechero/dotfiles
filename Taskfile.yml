@@ -43,6 +43,12 @@ tasks:
     cmds:
       - ./{{.BIN}} report {{.CLI_ARGS}}
 
+  worktrees:
+    desc: List every worktree with a verdict, changing nothing (task worktrees -- --fetch checks against today's main)
+    deps: [build]
+    cmds:
+      - ./{{.BIN}} worktrees {{.CLI_ARGS}}
+
   test:
     desc: Vet, then run every test with the race detector
     cmds:
