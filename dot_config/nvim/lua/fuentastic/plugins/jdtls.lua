@@ -69,9 +69,25 @@ local function runtimes(jdks)
   return list
 end
 
+-- java-test ships these next to its bundles, but launches them itself (the last one is
+-- an unversioned duplicate of the plugin jar), so they must not be loaded into jdtls.
+local not_bundles = {
+  ['com.microsoft.java.test.plugin.jar'] = true,
+  ['com.microsoft.java.test.runner-jar-with-dependencies.jar'] = true,
+  ['jacocoagent.jar'] = true,
+}
+
 -- jdtls extensions installed by mason; they only load when the server starts.
 local function bundles()
-  return vim.fn.glob(mason .. '/share/java-debug-adapter/com.microsoft.java.debug.plugin-*.jar', false, true)
+  local list = vim.fn.glob(mason .. '/share/java-debug-adapter/com.microsoft.java.debug.plugin-*.jar', false, true)
+  for _, jar in ipairs(vim.fn.glob(mason .. '/share/java-test/*.jar', false, true)) do
+    local name = vim.fs.basename(jar)
+    -- A jar jdtls already ships under the same name (asm) is the same bundle; OSGi rejects a second copy.
+    if not not_bundles[name] and not vim.uv.fs_stat(mason .. '/share/jdtls/plugins/' .. name) then
+      table.insert(list, jar)
+    end
+  end
+  return list
 end
 
 local function on_attach(_, bufnr)
@@ -87,6 +103,12 @@ local function on_attach(_, bufnr)
   map('x', '<leader>cxc', '<Esc><Cmd>lua require("jdtls").extract_constant({ visual = true })<CR>', 'E[x]tract [C]onstant')
   map('x', '<leader>cxm', '<Esc><Cmd>lua require("jdtls").extract_method({ visual = true })<CR>', 'E[x]tract [M]ethod')
   map('n', 'gS', jdtls.super_implementation, '[G]oto [S]uper implementation')
+
+  -- Tests run under the debugger (breakpoints work); failures land in the quickfix list.
+  map('n', '<leader>tc', jdtls.test_class, '[T]est [C]lass')
+  map('n', '<leader>tm', jdtls.test_nearest_method, '[T]est nearest [M]ethod')
+  map('n', '<leader>tp', jdtls.pick_test, '[T]est [P]ick')
+  map('n', '<leader>tl', require('dap').run_last, 'Re-run [L]ast test or debug session')
 end
 
 local function attach()
