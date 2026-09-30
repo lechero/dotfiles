@@ -141,6 +141,9 @@ while the IDE is open.
 - Opening a new `.java` file writes it to disk right away. nvim-jdtls does this because jdtls
   ignores files that don't exist yet.
 - Each project gets its own jdtls workspace in `~/.cache/nvim/jdtls/<project>-<hash>`.
+- jdtls also writes Eclipse project files (`.project`, `.classpath`, `.factorypath`, `.settings/`)
+  into every project it imports. The global git ignore (`dot_config/private_git/ignore`) keeps
+  them out of `git status` in repos that don't ignore them.
 
 ## Troubleshooting
 
