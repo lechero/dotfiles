@@ -34,13 +34,6 @@ return {
 					"/Users/miguelfuentes/projects/hardlysimple",
 				},
 			},
-			-- {
-			-- 	"Topgeschenken",
-			-- 	"a",
-			-- 	{
-			-- 		"/Users/miguelfuentes/projects/topgeschenken",
-			-- 	},
-			-- },
 			{
 				"Enmeduranki", -- title
 				"r", -- shortcuts prefix
