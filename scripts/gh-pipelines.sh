@@ -219,7 +219,7 @@ run_action_menu() {
 # Examples:
 #   ./gh-pipelines.sh
 #   ./gh-pipelines.sh -n 30
-#   ./gh-pipelines.sh -r topgeschenken/region-tool-backend -n 25
+#   ./gh-pipelines.sh -r owner/repo -n 25
 
 # ---------- deps ----------
 for bin in gh jq gum; do
