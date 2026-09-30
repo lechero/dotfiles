@@ -74,6 +74,7 @@ local function setup_lsp()
   vim.list_extend(ensure_installed, {
     'stylua',
     'jdtls', -- started by nvim-jdtls (plugins/jdtls.lua), not the servers loop
+    'java-debug-adapter', -- loaded into jdtls as a bundle
   })
 
   require('mason-tool-installer').setup({ ensure_installed = ensure_installed })
