@@ -1,0 +1,7 @@
+**/.claude/settings.local.json
+
+# Eclipse project files jdtls writes when it imports a Maven/Gradle project (nvim, VS Code)
+.project
+.classpath
+.factorypath
+.settings/
