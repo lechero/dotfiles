@@ -3,6 +3,8 @@ local root_markers = {
   { 'pom.xml', 'build.gradle', 'build.gradle.kts', 'build.xml' },
 }
 
+local mason = vim.fn.stdpath('data') .. '/mason'
+
 local function jdk_major(home)
   local file = io.open(home .. '/release')
   if not file then
@@ -67,6 +69,11 @@ local function runtimes(jdks)
   return list
 end
 
+-- jdtls extensions installed by mason; they only load when the server starts.
+local function bundles()
+  return vim.fn.glob(mason .. '/share/java-debug-adapter/com.microsoft.java.debug.plugin-*.jar', false, true)
+end
+
 local function on_attach(_, bufnr)
   local jdtls = require('jdtls')
   local function map(mode, keys, func, desc)
@@ -97,7 +104,6 @@ local function attach()
 
   local root = vim.fs.root(0, root_markers) or vim.fs.dirname(vim.api.nvim_buf_get_name(0))
   local workspace = vim.fn.stdpath('cache') .. '/jdtls/' .. vim.fs.basename(root) .. '-' .. vim.fn.sha256(root):sub(1, 8)
-  local mason = vim.fn.stdpath('data') .. '/mason'
 
   local capabilities = vim.lsp.protocol.make_client_capabilities()
   capabilities = vim.tbl_deep_extend('force', capabilities, require('cmp_nvim_lsp').default_capabilities())
@@ -110,6 +116,7 @@ local function attach()
     capabilities = capabilities,
     on_attach = on_attach,
     init_options = {
+      bundles = bundles(),
       extendedClientCapabilities = require('jdtls').extendedClientCapabilities,
     },
     settings = {
@@ -133,7 +140,12 @@ end
 return {
   'mfussenegger/nvim-jdtls',
   ft = 'java',
+  dependencies = { 'mfussenegger/nvim-dap' },
   config = function()
+    -- Registers the `java` adapter, so <F5> offers every main class in the project. Only the
+    -- first call counts, and nvim-jdtls makes its own (without these options) on LspAttach.
+    require('jdtls').setup_dap({ hotcodereplace = 'auto' })
+
     vim.api.nvim_create_autocmd('FileType', {
       group = vim.api.nvim_create_augroup('fuentastic-jdtls', { clear = true }),
       pattern = 'java',

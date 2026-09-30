@@ -35,6 +35,7 @@ local plugins = {
   require('fuentastic.plugins.trouble'),
   require('fuentastic.plugins.copilot-cmp'),
   require('fuentastic.plugins.nvim-cmp'),
+  require('fuentastic.plugins.dap'),
   require('fuentastic.plugins.jdtls'),
 }
 
