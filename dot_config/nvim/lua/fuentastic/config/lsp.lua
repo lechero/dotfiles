@@ -73,6 +73,7 @@ local function setup_lsp()
   local ensure_installed = vim.tbl_keys(servers or {})
   vim.list_extend(ensure_installed, {
     'stylua',
+    'jdtls', -- started by nvim-jdtls (plugins/jdtls.lua), not the servers loop
   })
 
   require('mason-tool-installer').setup({ ensure_installed = ensure_installed })
