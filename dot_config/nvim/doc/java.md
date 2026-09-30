@@ -11,6 +11,7 @@ runs through [nvim-dap](https://github.com/mfussenegger/nvim-dap). The config li
 | `lua/fuentastic/plugins/treesitter.lua` | `java`, `xml`, `groovy`, `kotlin`, `properties`, `yaml` parsers |
 | `after/ftplugin/java.lua` | 4-space indent when vim-sleuth can't detect one |
 | `lua/fuentastic/config/lsp.lua` | Mason installs `jdtls`, `java-debug-adapter`, `java-test` |
+| `lua/fuentastic/plugins/conform.lua` | Formats with the project's Spotless profile or IntelliJ code style |
 
 ## Requirements
 
@@ -56,7 +57,7 @@ Java buffers (on top of the usual LSP maps: `gd`, `gr`, `gI`, `<leader>rn`, `<le
 | `<leader>tp` | Pick a test to run |
 | `<leader>tl` | Re-run the last test or debug session |
 | `<leader>th` | Toggle inlay hints (parameter names) |
-| `<leader>f` | Format with jdtls |
+| `<leader>f` | Format the buffer or selection (see [Formatting](#formatting)) |
 
 Code generation (constructors, `toString`, `equals`/`hashCode`, delegate methods, overriding or
 implementing methods) is under `<leader>ca`.
@@ -89,10 +90,51 @@ quickfix list (`:copen`) and the full report is in the dap REPL.
 
 ## Formatting
 
-Java isn't formatted on save: jdtls formats with Eclipse's built-in profile unless the project
-has its own Eclipse formatter settings, and that would reformat files in projects that use
-another style. Format by hand with `<leader>f`. To format on save anyway, drop `java` from
-`disable_filetypes` in `lua/fuentastic/plugins/conform.lua`.
+The project decides how java is formatted (`lua/fuentastic/plugins/conform.lua`):
+
+| The project has | `<leader>f` uses | On save |
+| --- | --- | --- |
+| Spotless with an Eclipse profile | jdtls with that profile | yes |
+| An IntelliJ code style in `.idea/codeStyles/Project.xml` | IntelliJ's formatter (~3s) | no |
+| Neither | jdtls with Eclipse's built-in profile | no |
+
+In visual mode `<leader>f` only formats the selection. That helps in codebases that have drifted
+from their own style, where formatting a whole file rewrites lines you never touched.
+
+### Spotless projects
+
+The profile is read from the Spotless config: `eclipse().configFile('config/style.xml')` in
+`build.gradle(.kts)`, or `<eclipse><file>...</file></eclipse>` in `pom.xml`. jdtls runs the same
+Eclipse formatter as Spotless, so the result matches `spotlessCheck`. The rare exception comes
+from Spotless using an older Eclipse release than jdtls; `./gradlew spotlessApply` settles it.
+
+### IntelliJ code style projects
+
+For a scheme you were handed as an exported `.xml`, make it the project's code style, either in
+IntelliJ (Settings > Editor > Code Style > Java, scheme "Project", gear icon > Import Scheme) or
+by hand: wrap it as `.idea/codeStyles/Project.xml`
+
+```xml
+<component name="ProjectCodeStyleConfiguration">
+  <code_scheme name="Project" version="173">
+    <!-- the <option>, <JavaCodeStyleSettings>, ... elements of the exported scheme -->
+  </code_scheme>
+</component>
+```
+
+and add `.idea/codeStyles/codeStyleConfig.xml` so IntelliJ uses it too:
+
+```xml
+<component name="ProjectCodeStyleConfiguration">
+  <state>
+    <option name="USE_PER_PROJECT_SETTINGS" value="true" />
+  </state>
+</component>
+```
+
+This needs IntelliJ IDEA (Community is enough) in `/Applications` or `~/Applications`. The
+formatter keeps its own settings and caches in `~/.cache/nvim/intellij-format`, so it works
+while the IDE is open.
 
 ## Notes
 
@@ -108,6 +150,8 @@ another style. Format by hand with `<leader>f`. To format on save anyway, drop `
 | Stale or strange errors across the project | `:JdtWipeDataAndRestart` |
 | `<F5>` or `<leader>tc` do nothing | `:JdtRestart` (extensions installed after jdtls started) |
 | Server errors | `:JdtShowLogs` |
+| IntelliJ format fails with "Only one instance" | A previous `<leader>f` is still running |
+| Formatting doesn't run | `:ConformInfo` |
 | No java highlighting | `:checkhealth nvim-treesitter` |
 
 Parsers built by the old `master` branch of nvim-treesitter may still be in
