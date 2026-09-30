@@ -12,6 +12,13 @@ local parsers = {
   'query',
   'vim',
   'vimdoc',
+  -- java
+  'java',
+  'groovy', -- build.gradle
+  'kotlin', -- build.gradle.kts
+  'properties', -- application.properties
+  'xml', -- pom.xml
+  'yaml', -- application.yml
 }
 
 return {
