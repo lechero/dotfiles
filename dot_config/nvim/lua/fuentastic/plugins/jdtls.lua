@@ -22,12 +22,23 @@ local function jdk_major(home)
   return tonumber(first)
 end
 
--- Every JDK SDKMAN or a macOS installer put on this machine, one per major version.
+-- Where SDKMAN, macOS installers, IntelliJ downloads, Homebrew and Linux distros put JDKs.
+local jdk_globs = {
+  vim.env.HOME .. '/.sdkman/candidates/java/*',
+  '/Library/Java/JavaVirtualMachines/*/Contents/Home',
+  vim.env.HOME .. '/Library/Java/JavaVirtualMachines/*/Contents/Home',
+  '/opt/homebrew/opt/openjdk*/libexec/openjdk.jdk/Contents/Home',
+  '/usr/lib/jvm/*',
+}
+
+-- Every JDK on this machine, one per major version, oldest first.
 -- The one JAVA_HOME points at wins its major, so `sdk use` / `sdk default` carry over.
 local function installed_jdks()
   local java_home = vim.env.JAVA_HOME and vim.uv.fs_realpath(vim.env.JAVA_HOME)
-  local homes = vim.fn.glob(vim.env.HOME .. '/.sdkman/candidates/java/*', false, true)
-  vim.list_extend(homes, vim.fn.glob('/Library/Java/JavaVirtualMachines/*/Contents/Home', false, true))
+  local homes = { java_home }
+  for _, pattern in ipairs(jdk_globs) do
+    vim.list_extend(homes, vim.fn.glob(pattern, false, true))
+  end
 
   local by_major = {}
   for _, home in ipairs(homes) do
@@ -37,33 +48,41 @@ local function installed_jdks()
       by_major[major] = { home = real, major = major, is_java_home = real == java_home }
     end
   end
-  return vim.tbl_values(by_major)
+
+  local jdks = vim.tbl_values(by_major)
+  table.sort(jdks, function(a, b)
+    return a.major < b.major
+  end)
+  return jdks
 end
 
--- jdtls itself needs Java 21+, whatever the project targets.
+-- jdtls itself needs Java 21+, whatever the project targets. Without a usable JAVA_HOME
+-- (nvim started from a GUI) take the oldest that qualifies: the newest is often a non-LTS.
 local function server_jdk(jdks)
-  local best
+  local oldest
   for _, jdk in ipairs(jdks) do
     if jdk.major >= 21 then
       if jdk.is_java_home then
         return jdk
       end
-      if not best or jdk.major > best.major then
-        best = jdk
-      end
+      oldest = oldest or jdk
     end
   end
-  return best
+  return oldest
 end
 
 -- Maps each JDK to the execution environment a pom/gradle file asks for (release 17 -> JavaSE-17).
-local function runtimes(jdks)
+-- The default one (JAVA_HOME, else the server's) builds plain .java files and unpinned projects.
+local function runtimes(jdks, server)
+  local has_java_home = vim.iter(jdks):any(function(jdk)
+    return jdk.is_java_home
+  end)
   local list = {}
   for _, jdk in ipairs(jdks) do
     table.insert(list, {
       name = 'JavaSE-' .. (jdk.major <= 8 and '1.' .. jdk.major or jdk.major),
       path = jdk.home,
-      default = jdk.is_java_home or nil,
+      default = (jdk.is_java_home or (not has_java_home and jdk == server)) or nil,
     })
   end
   return list
@@ -103,6 +122,7 @@ local function on_attach(_, bufnr)
   map('x', '<leader>cxc', '<Esc><Cmd>lua require("jdtls").extract_constant({ visual = true })<CR>', 'E[x]tract [C]onstant')
   map('x', '<leader>cxm', '<Esc><Cmd>lua require("jdtls").extract_method({ visual = true })<CR>', 'E[x]tract [M]ethod')
   map('n', 'gS', jdtls.super_implementation, '[G]oto [S]uper implementation')
+  map('n', '<leader>cu', jdtls.update_project_config, '[U]pdate project config from pom/gradle')
 
   -- Tests run under the debugger (breakpoints work); failures land in the quickfix list.
   map('n', '<leader>tc', jdtls.test_class, '[T]est [C]lass')
@@ -135,7 +155,17 @@ local function attach(args)
 
   require('jdtls').start_or_attach({
     name = 'jdtls',
-    cmd = { mason .. '/bin/jdtls', '--jvm-arg=-javaagent:' .. mason .. '/share/jdtls/lombok.jar', '-data', workspace },
+    cmd = {
+      mason .. '/bin/jdtls',
+      '--jvm-arg=-javaagent:' .. mason .. '/share/jdtls/lombok.jar',
+      -- vscode-java's GC tuning: fast builds, and memory goes back to the OS when idle
+      '--jvm-arg=-XX:+UseParallelGC',
+      '--jvm-arg=-XX:GCTimeRatio=4',
+      '--jvm-arg=-XX:AdaptiveSizePolicyWeight=90',
+      '--jvm-arg=-Dsun.zip.disableMemoryMapping=true',
+      '-data',
+      workspace,
+    },
     cmd_env = { JAVA_HOME = jdk.home },
     root_dir = root,
     capabilities = capabilities,
@@ -147,13 +177,35 @@ local function attach(args)
     settings = {
       java = {
         configuration = {
-          runtimes = runtimes(jdks),
+          runtimes = runtimes(jdks, jdk),
           updateBuildConfiguration = 'automatic',
         },
         eclipse = { downloadSources = true },
         maven = { downloadSources = true },
         references = { includeDecompiledSources = true },
-        signatureHelp = { enabled = true },
+        signatureHelp = { enabled = true, description = { enabled = true } },
+        inlayHints = { parameterNames = { enabled = 'all' } }, -- shown with <leader>th
+        -- Turn on null analysis when the project has @Nullable annotations, without asking.
+        compile = { nullAnalysis = { mode = 'automatic' } },
+        completion = {
+          -- Completed (and statically imported) without typing the class name first.
+          favoriteStaticMembers = {
+            'org.junit.jupiter.api.Assertions.*',
+            'org.junit.jupiter.api.Assumptions.*',
+            'org.junit.Assert.*',
+            'org.junit.Assume.*',
+            'org.assertj.core.api.Assertions.*',
+            'org.mockito.Mockito.*',
+            'org.mockito.ArgumentMatchers.*',
+            'org.hamcrest.Matchers.*',
+            'java.util.Objects.requireNonNull',
+            'java.util.Objects.requireNonNullElse',
+          },
+        },
+        codeGeneration = {
+          hashCodeEquals = { useJava7Objects = true },
+          useBlocks = true,
+        },
         sources = {
           organizeImports = { starThreshold = 9999, staticStarThreshold = 9999 },
         },
