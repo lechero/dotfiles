@@ -38,11 +38,10 @@ local function setup_lsp_keymaps(event)
     })
   end
 
-  if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_inlayHint) then
-    map('<leader>th', function()
-      vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled({ bufnr = event.buf }))
-    end, '[T]oggle Inlay [H]ints')
-  end
+  -- Not gated on the capability: jdtls only registers inlay hints after attaching.
+  map('<leader>th', function()
+    vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled({ bufnr = event.buf }))
+  end, '[T]oggle Inlay [H]ints')
 end
 
 local function setup_lsp()
