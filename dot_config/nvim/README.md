@@ -127,6 +127,11 @@ Typical maintenance flow:
 
 Use `:Lazy restore` to get back to the revisions recorded in `lazy-lock.json`.
 
+### Java development
+
+Java (jdtls, debugging, tests) is set up out of the box; see [doc/java.md](doc/java.md) for
+requirements, keymaps and troubleshooting.
+
 
 ### Getting Started
 
