@@ -109,6 +109,29 @@ local function bundles()
   return list
 end
 
+-- The Eclipse formatter profile the project's Spotless config enforces. jdtls runs the same
+-- Eclipse formatter, so <leader>f (and format-on-save, see conform.lua) match `spotlessCheck`.
+--   gradle: spotless { java { eclipse().configFile('config/style.xml') } }
+--   maven:  <eclipse><file>${project.basedir}/style.xml</file></eclipse>
+local function spotless_profile(root)
+  for _, name in ipairs({ 'build.gradle', 'build.gradle.kts', 'pom.xml' }) do
+    local file = io.open(root .. '/' .. name)
+    if file then
+      local build = file:read('*a')
+      file:close()
+      local path = build:match('eclipse%b()%s*%.%s*configFile[^\'"\n]*[\'"]([^\'"\n]+)')
+      local maven = build:match('<eclipse>(.-)</eclipse>')
+      path = path or (maven and maven:match('<file>%s*(.-)%s*</file>'))
+      if path then
+        -- relative to the project: drop a leading ${project.basedir}/, $rootDir/ and the like
+        path = path:gsub('^%$%b{}/', ''):gsub('^%$%w+/', '')
+        path = vim.startswith(path, '/') and path or vim.fs.joinpath(root, path)
+        return vim.uv.fs_stat(path) and path or nil
+      end
+    end
+  end
+end
+
 local function on_attach(_, bufnr)
   local jdtls = require('jdtls')
   local function map(mode, keys, func, desc)
@@ -206,6 +229,7 @@ local function attach(args)
           hashCodeEquals = { useJava7Objects = true },
           useBlocks = true,
         },
+        format = { settings = { url = spotless_profile(root) } },
         sources = {
           organizeImports = { starThreshold = 9999, staticStarThreshold = 9999 },
         },
