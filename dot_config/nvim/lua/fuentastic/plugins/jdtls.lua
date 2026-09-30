@@ -111,9 +111,12 @@ local function on_attach(_, bufnr)
   map('n', '<leader>tl', require('dap').run_last, 'Re-run [L]ast test or debug session')
 end
 
-local function attach()
-  -- jdt:// class files opened from a definition jump are attached by nvim-jdtls itself
-  if not vim.startswith(vim.uri_from_bufnr(0), 'file://') then
+local function attach(args)
+  -- Real files only. jdt:// class files opened from a definition jump are attached by
+  -- nvim-jdtls itself, and unnamed scratch buffers have no project: vim.filetype.get_option()
+  -- (nvim-dap calls it on every debug session) sets filetype=java on a hidden one.
+  local name = vim.api.nvim_buf_get_name(args.buf)
+  if name == '' or not vim.startswith(vim.uri_from_bufnr(args.buf), 'file://') then
     return
   end
 
@@ -124,7 +127,7 @@ local function attach()
     return
   end
 
-  local root = vim.fs.root(0, root_markers) or vim.fs.dirname(vim.api.nvim_buf_get_name(0))
+  local root = vim.fs.root(args.buf, root_markers) or vim.fs.dirname(name)
   local workspace = vim.fn.stdpath('cache') .. '/jdtls/' .. vim.fs.basename(root) .. '-' .. vim.fn.sha256(root):sub(1, 8)
 
   local capabilities = vim.lsp.protocol.make_client_capabilities()
@@ -156,7 +159,7 @@ local function attach()
         },
       },
     },
-  })
+  }, nil, { bufnr = args.buf })
 end
 
 return {
