@@ -9,52 +9,7 @@ return {
 		end
 
 		local query = require("possession.query")
-		local workspaces = {
-			{
-				"Dotfiles",
-				"e",
-				"/Users/miguelfuentes/.dotfiles",
-			},
-			{
-				"Theresai",
-				"t",
-				{
-					"/Users/miguelfuentes/projects/theresai",
-				},
-				-- {
-				--   '/Users/miguelfuentes/projects/dgngroep',
-				--   '/Users/miguelfuentes/projects/canon-knip-app',
-				--   '/Users/miguelfuentes/projects/development-knip-app',
-				-- }
-			},
-			{
-				"Hardly Simple",
-				"t",
-				{
-					"/Users/miguelfuentes/projects/hardlysimple",
-				},
-			},
-			{
-				"Enmeduranki", -- title
-				"r", -- shortcuts prefix
-				{
-					"/Users/miguelfuentes/projects/enmeduranki", -- path
-				},
-			},
-			-- {
-			-- 	"Palabras", -- title
-			-- 	"p", -- shortcuts prefix
-			-- 	{
-			-- 		"/Users/miguelfuentes/projects/palabras", -- path
-			-- 		"/other/root/directory/",
-			-- 	},
-			-- },
-			-- {
-			-- 	"Lizzr",
-			-- 	"b",
-			-- 	"/Users/miguelfuentes/projects/lizzr",
-			-- },
-		}
+		local workspaces = require("fuentastic.workspaces")
 
 		-- use with the rest of sections for alpha.nvim, with throttling to avoid reading files on each redraw
 		local utils = require("possession.utils")
