@@ -85,8 +85,17 @@ return {
     formatters_by_ft = {
       lua = { 'stylua' },
       java = { 'intellij' }, -- when it doesn't apply, <leader>f falls back to jdtls
+      -- Vue projects: when prettier doesn't apply, ts_ls / vue_ls format
+      vue = { 'prettier' },
+      javascript = { 'prettier' },
+      typescript = { 'prettier' },
+      css = { 'prettier' },
+      scss = { 'prettier' },
     },
     formatters = {
+      -- Only in projects with a prettier config: ts_ls and vue_ls ignore it (double quotes and
+      -- semicolons in a `semi: false, singleQuote: true` project, for one).
+      prettier = { require_cwd = true },
       intellij = {
         command = intellij,
         args = function(_, ctx)

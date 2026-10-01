@@ -132,6 +132,11 @@ Use `:Lazy restore` to get back to the revisions recorded in `lazy-lock.json`.
 Java (jdtls, debugging, tests) is set up out of the box; see [doc/java.md](doc/java.md) for
 requirements, keymaps and troubleshooting.
 
+### Vue development
+
+Vue 3 single-file components (vue_ls + `ts_ls`, treesitter, prettier) are set up out of the box;
+see [doc/vue.md](doc/vue.md) for requirements, formatting and troubleshooting.
+
 
 ### Getting Started
 
