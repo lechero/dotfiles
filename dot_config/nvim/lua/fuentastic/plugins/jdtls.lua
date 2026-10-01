@@ -173,6 +173,13 @@ local function attach(args)
   local root = vim.fs.root(args.buf, root_markers) or vim.fs.dirname(name)
   local workspace = vim.fn.stdpath('cache') .. '/jdtls/' .. vim.fs.basename(root) .. '-' .. vim.fn.sha256(root):sub(1, 8)
 
+  -- Maven plugin goals not to run on jdtls's builds (frontend-maven-plugin's npm runs). m2e reads this
+  -- file from the workspace at startup; java.configuration.maven.lifecycleMappings only takes effect
+  -- after the first import has built the project, and that build is where an npm test run hangs.
+  local m2e = workspace .. '/.metadata/.plugins/org.eclipse.m2e.core'
+  vim.fn.mkdir(m2e, 'p')
+  vim.uv.fs_copyfile(vim.fn.stdpath('config') .. '/jdtls/lifecycle-mapping-metadata.xml', m2e .. '/lifecycle-mapping-metadata.xml')
+
   local capabilities = vim.lsp.protocol.make_client_capabilities()
   capabilities = vim.tbl_deep_extend('force', capabilities, require('cmp_nvim_lsp').default_capabilities())
 

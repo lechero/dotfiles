@@ -7,6 +7,7 @@ runs through [nvim-dap](https://github.com/mfussenegger/nvim-dap). The config li
 | File | What it does |
 | --- | --- |
 | `lua/fuentastic/plugins/jdtls.lua` | JDK discovery, jdtls start/settings, java keymaps |
+| `jdtls/lifecycle-mapping-metadata.xml` | Maven plugin goals jdtls's builds skip (see [Notes](#notes)) |
 | `lua/fuentastic/plugins/dap.lua` | Debugger core, dap-ui, debug keymaps (all languages) |
 | `lua/fuentastic/plugins/treesitter.lua` | `java`, `xml`, `groovy`, `kotlin`, `properties`, `yaml` parsers |
 | `after/ftplugin/java.lua` | 4-space indent when vim-sleuth can't detect one |
@@ -144,6 +145,10 @@ while the IDE is open.
 - jdtls also writes Eclipse project files (`.project`, `.classpath`, `.factorypath`, `.settings/`)
   into every project it imports. The global git ignore (`dot_config/private_git/ignore`) keeps
   them out of `git status` in repos that don't ignore them.
+- jdtls's builds don't run frontend-maven-plugin (`npm install`, the frontend build, JS tests):
+  the plugin asks to run on every build, and a test run that never exits stalls the project
+  import. Build the frontend from the shell. Other plugin goals to skip go in
+  `jdtls/lifecycle-mapping-metadata.xml`; after changing it, `:JdtRestart`.
 
 ## Troubleshooting
 
@@ -152,6 +157,7 @@ while the IDE is open.
 | Red imports after changing `pom.xml` / `build.gradle` | `<leader>cu` |
 | Stale or strange errors across the project | `:JdtWipeDataAndRestart` |
 | `<F5>` or `<leader>tc` do nothing | `:JdtRestart` (extensions installed after jdtls started) |
+| Import stuck ("Synchronizing projects 0%") | A Maven plugin's process hangs: `pgrep -lf -P "$(pgrep -d, -f jdt.ls.core)"` lists what jdtls started; skip that plugin in `jdtls/lifecycle-mapping-metadata.xml` |
 | Server errors | `:JdtShowLogs` |
 | IntelliJ format fails with "Only one instance" | A previous `<leader>f` is still running |
 | Formatting doesn't run | `:ConformInfo` |
