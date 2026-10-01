@@ -137,6 +137,12 @@ requirements, keymaps and troubleshooting.
 Vue 3 single-file components (vue_ls + `ts_ls`, treesitter, prettier) are set up out of the box;
 see [doc/vue.md](doc/vue.md) for requirements, formatting and troubleshooting.
 
+### SonarQube
+
+Java and TypeScript files show SonarQube issues, checked against your SonarQube project's rules
+when the project is bound to the server; see [doc/sonarqube.md](doc/sonarqube.md) to bind a
+project and store its token.
+
 
 ### Getting Started
 

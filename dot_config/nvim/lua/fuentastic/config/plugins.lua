@@ -37,6 +37,7 @@ local plugins = {
   require('fuentastic.plugins.nvim-cmp'),
   require('fuentastic.plugins.dap'),
   require('fuentastic.plugins.jdtls'),
+  require('fuentastic.plugins.sonarlint'),
 }
 
 vim.list_extend(plugins, require('fuentastic.config.lsp'))

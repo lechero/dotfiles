@@ -88,6 +88,7 @@ local function setup_lsp()
     'jdtls', -- started by nvim-jdtls (plugins/jdtls.lua), not the servers loop
     'java-debug-adapter', -- loaded into jdtls as bundles
     'java-test',
+    'sonarlint-language-server', -- started by sonarlint.nvim (plugins/sonarlint.lua)
   })
 
   require('mason-tool-installer').setup({ ensure_installed = ensure_installed })
