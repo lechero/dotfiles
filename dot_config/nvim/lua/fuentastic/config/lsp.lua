@@ -53,9 +53,22 @@ local function setup_lsp()
   local capabilities = vim.lsp.protocol.make_client_capabilities()
   capabilities = vim.tbl_deep_extend('force', capabilities, require('cmp_nvim_lsp').default_capabilities())
 
+  -- vue_ls only handles a .vue file's template and styles; it forwards the TypeScript to ts_ls
+  -- (lspconfig's vue_ls on_init), which needs the Vue plugin that vue-language-server ships.
+  local vue_plugin = {
+    name = '@vue/typescript-plugin',
+    location = vim.fn.stdpath('data') .. '/mason/packages/vue-language-server/node_modules/@vue/language-server',
+    languages = { 'vue' },
+    configNamespace = 'typescript',
+  }
+
   local servers = {
     rust_analyzer = {},
-    ts_ls = {},
+    ts_ls = {
+      init_options = { plugins = { vue_plugin } },
+      filetypes = { 'javascript', 'javascriptreact', 'typescript', 'typescriptreact', 'vue' },
+    },
+    vue_ls = {},
     lua_ls = {
       settings = {
         Lua = {

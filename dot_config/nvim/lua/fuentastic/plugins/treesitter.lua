@@ -19,6 +19,13 @@ local parsers = {
   'properties', -- application.properties
   'xml', -- pom.xml
   'yaml', -- application.yml
+  -- vue, plus what its <script> and <style> blocks inject
+  'vue',
+  'javascript',
+  'typescript',
+  'tsx',
+  'css',
+  'scss',
 }
 
 return {
