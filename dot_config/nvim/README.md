@@ -137,6 +137,11 @@ requirements, keymaps and troubleshooting.
 Vue 3 single-file components (vue_ls + `ts_ls`, treesitter, prettier) are set up out of the box;
 see [doc/vue.md](doc/vue.md) for requirements, formatting and troubleshooting.
 
+### HTL (AEM components)
+
+`gd` in an AEM component script opens the component, script, Java class or template the line
+references; see [doc/htl.md](doc/htl.md).
+
 ### SonarQube
 
 Java and TypeScript files show SonarQube issues, checked against your SonarQube project's rules
