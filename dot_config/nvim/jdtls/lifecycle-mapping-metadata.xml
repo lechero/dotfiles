@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Maven plugin goals jdtls's Maven support (m2e) must not run while it builds a project in the editor.
+  lua/fuentastic/plugins/jdtls.lua copies this into every jdtls workspace, where m2e reads it at startup.
+  Only an org.eclipse.m2e:lifecycle-mapping section in a project's own pom.xml takes precedence.
+-->
+<lifecycleMappingMetadata>
+  <pluginExecutions>
+    <!--
+      frontend-maven-plugin asks m2e to run its npm/yarn goals on every build: npm install, the frontend
+      build and the JS tests would rerun as you edit Java, and a test run that never exits stalls the
+      project import ("Synchronizing projects 0%"). Build the frontend from the shell instead.
+    -->
+    <pluginExecution>
+      <pluginExecutionFilter>
+        <groupId>com.github.eirslett</groupId>
+        <artifactId>frontend-maven-plugin</artifactId>
+        <versionRange>[0,)</versionRange>
+        <goals>
+          <goal>install-node-and-npm</goal>
+          <goal>install-node-and-yarn</goal>
+          <goal>install-node-and-pnpm</goal>
+          <goal>install-node-and-corepack</goal>
+          <goal>install-bun</goal>
+          <goal>npm</goal>
+          <goal>npx</goal>
+          <goal>yarn</goal>
+          <goal>pnpm</goal>
+          <goal>corepack</goal>
+          <goal>bun</goal>
+          <goal>bower</goal>
+          <goal>grunt</goal>
+          <goal>gulp</goal>
+          <goal>jspm</goal>
+          <goal>karma</goal>
+          <goal>webpack</goal>
+          <goal>ember</goal>
+        </goals>
+      </pluginExecutionFilter>
+      <action>
+        <ignore />
+      </action>
+    </pluginExecution>
+  </pluginExecutions>
+</lifecycleMappingMetadata>
