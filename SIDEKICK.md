@@ -39,3 +39,15 @@ All mappings are defined in `dot_config/nvim/init.lua` around the Sidekick plugi
 - The mapping block is tagged with `-- stylua: ignore`; keep formatting changes minimal if you edit it, or update the directive accordingly.
 
 Happy pairing! Use `:h sidekick.nvim` for upstream docs or open the GitHub repo for advanced configuration examples. The mappings above should cover the fastest way to chat, run prompts, and apply AI edits from within Neovim.***
+
+## Fish shell dependencies
+
+The fish config in `dot_config/fish` adds these, each pinned to a release. `run_onchange_after_install-fish-plugins.sh.tmpl` installs them with fisher whenever `dot_config/fish/fish_plugins` changes, after checking the fisher bootstrap against its sha256.
+
+| Plugin | Version | Purpose |
+| --- | --- | --- |
+| [jorgebucaran/fisher](https://github.com/jorgebucaran/fisher) | 4.4.8 | Plugin manager |
+| [ilancosman/tide](https://github.com/IlanCosman/tide) | v6.2.0 | Prompt |
+| [patrickf1/fzf.fish](https://github.com/PatrickF1/fzf.fish) | v11.0 | fzf searches on keys |
+| [jorgebucaran/nvm.fish](https://github.com/jorgebucaran/nvm.fish) | 2.2.17 | Node versions |
+| [reitzig/sdkman-for-fish](https://github.com/reitzig/sdkman-for-fish) | v2.1.0 | The `sdk` command in fish |
