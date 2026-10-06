@@ -1,36 +1,50 @@
 package ui
 
 import (
+	"image/color"
 	"math"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
 )
 
+// The colours and styles below suit a dark terminal until setTheme hears the
+// terminal's real background colour.
 var (
-	colAccent = lipgloss.AdaptiveColor{Light: "#7D3AED", Dark: "#A78BFA"}
-	colGreen  = lipgloss.AdaptiveColor{Light: "#15803D", Dark: "#4ADE80"}
-	colYellow = lipgloss.AdaptiveColor{Light: "#B45309", Dark: "#FBBF24"}
-	colRed    = lipgloss.AdaptiveColor{Light: "#B91C1C", Dark: "#F87171"}
-	colDim    = lipgloss.AdaptiveColor{Light: "#6B7280", Dark: "#8B8F98"}
-	colFaint  = lipgloss.AdaptiveColor{Light: "#D1D5DB", Dark: "#3A3F4B"}
-	colText   = lipgloss.AdaptiveColor{Light: "#111827", Dark: "#E5E7EB"}
+	colAccent, colGreen, colYellow, colRed, colDim, colFaint, colText color.Color
+
+	sTab, sTabOn, sHeading, sDim, sAccent, sGreen, sYellow, sRed, sCursor, sBox lipgloss.Style
 
 	sTitle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#7D3AED")).Padding(0, 1)
 	sDryBadge = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#1F2937")).Background(lipgloss.Color("#FBBF24")).Padding(0, 1)
-	sTab      = lipgloss.NewStyle().Foreground(colDim).Padding(0, 1)
-	sTabOn    = lipgloss.NewStyle().Bold(true).Foreground(colAccent).Underline(true).Padding(0, 1)
-	sHeading  = lipgloss.NewStyle().Bold(true).Foreground(colText)
-	sDim      = lipgloss.NewStyle().Foreground(colDim)
-	sAccent   = lipgloss.NewStyle().Foreground(colAccent)
-	sGreen    = lipgloss.NewStyle().Foreground(colGreen)
-	sYellow   = lipgloss.NewStyle().Foreground(colYellow)
-	sRed      = lipgloss.NewStyle().Foreground(colRed)
 	sBold     = lipgloss.NewStyle().Bold(true)
-	sCursor   = lipgloss.NewStyle().Foreground(colAccent).Bold(true)
-	sBox      = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colAccent).Padding(0, 1)
 )
+
+func init() { setTheme(true) }
+
+// setTheme picks the colours for a dark or a light terminal background.
+func setTheme(isDark bool) {
+	pick := lipgloss.LightDark(isDark)
+	colAccent = pick(lipgloss.Color("#7D3AED"), lipgloss.Color("#A78BFA"))
+	colGreen = pick(lipgloss.Color("#15803D"), lipgloss.Color("#4ADE80"))
+	colYellow = pick(lipgloss.Color("#B45309"), lipgloss.Color("#FBBF24"))
+	colRed = pick(lipgloss.Color("#B91C1C"), lipgloss.Color("#F87171"))
+	colDim = pick(lipgloss.Color("#6B7280"), lipgloss.Color("#8B8F98"))
+	colFaint = pick(lipgloss.Color("#D1D5DB"), lipgloss.Color("#3A3F4B"))
+	colText = pick(lipgloss.Color("#111827"), lipgloss.Color("#E5E7EB"))
+
+	sTab = lipgloss.NewStyle().Foreground(colDim).Padding(0, 1)
+	sTabOn = lipgloss.NewStyle().Bold(true).Foreground(colAccent).Underline(true).Padding(0, 1)
+	sHeading = lipgloss.NewStyle().Bold(true).Foreground(colText)
+	sDim = lipgloss.NewStyle().Foreground(colDim)
+	sAccent = lipgloss.NewStyle().Foreground(colAccent)
+	sGreen = lipgloss.NewStyle().Foreground(colGreen)
+	sYellow = lipgloss.NewStyle().Foreground(colYellow)
+	sRed = lipgloss.NewStyle().Foreground(colRed)
+	sCursor = lipgloss.NewStyle().Foreground(colAccent).Bold(true)
+	sBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colAccent).Padding(0, 1)
+}
 
 var eighths = []string{"", "▏", "▎", "▍", "▌", "▋", "▊", "▉"}
 

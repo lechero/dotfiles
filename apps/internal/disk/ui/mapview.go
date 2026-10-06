@@ -2,13 +2,13 @@ package ui
 
 import (
 	"fmt"
+	"image/color"
 	"math"
-	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/human"
@@ -141,7 +141,7 @@ func (m *mapState) step(delta int) {
 	}
 }
 
-func (a *app) mapKey(msg tea.KeyMsg) tea.Cmd {
+func (a *app) mapKey(msg tea.KeyPressMsg) tea.Cmd {
 	if a.res == nil {
 		return nil
 	}
@@ -204,14 +204,14 @@ func (a *app) mapZoomOut() {
 // mapMouse: click selects, clicking the selection zooms in, right-click or
 // the wheel going up zooms out.
 func (a *app) mapMouse(msg tea.MouseMsg) tea.Cmd {
-	if a.res == nil || msg.Action != tea.MouseActionPress {
+	if a.res == nil || !pressed(msg) {
 		return nil
 	}
 	m := &a.mp
-	switch msg.Button {
-	case tea.MouseButtonLeft:
+	switch msg.Mouse().Button {
+	case tea.MouseLeft:
 		for _, b := range m.blocks {
-			if b.cell.Contains(msg.X, msg.Y-m.top) {
+			if b.cell.Contains(msg.Mouse().X, msg.Mouse().Y-m.top) {
 				if b.name == m.sel {
 					a.mapZoomIn()
 				} else {
@@ -220,9 +220,9 @@ func (a *app) mapMouse(msg tea.MouseMsg) tea.Cmd {
 				return nil
 			}
 		}
-	case tea.MouseButtonRight, tea.MouseButtonWheelUp:
+	case tea.MouseRight, tea.MouseWheelUp:
 		a.mapZoomOut()
-	case tea.MouseButtonWheelDown:
+	case tea.MouseWheelDown:
 		m.step(1)
 	}
 	return nil
@@ -380,11 +380,18 @@ type canvas struct {
 	runes  []rune
 	ids    []int
 	styles []lipgloss.Style
-	index  map[string]int
+	index  map[styleKey]int
+}
+
+// styleKey identifies an interned style; the palette's colours are
+// comparable values, so they can key a map directly.
+type styleKey struct {
+	bg, fg color.Color
+	bold   bool
 }
 
 func newCanvas(w, h int) *canvas {
-	c := &canvas{w: w, h: h, runes: make([]rune, w*h), ids: make([]int, w*h), index: map[string]int{}}
+	c := &canvas{w: w, h: h, runes: make([]rune, w*h), ids: make([]int, w*h), index: map[styleKey]int{}}
 	for i := range c.runes {
 		c.runes[i] = ' '
 	}
@@ -392,8 +399,8 @@ func newCanvas(w, h int) *canvas {
 	return c
 }
 
-func (c *canvas) style(bg, fg lipgloss.Color, bold bool) int {
-	k := string(bg) + "|" + string(fg) + "|" + strconv.FormatBool(bold)
+func (c *canvas) style(bg, fg color.Color, bold bool) int {
+	k := styleKey{bg, fg, bold}
 	if id, ok := c.index[k]; ok {
 		return id
 	}

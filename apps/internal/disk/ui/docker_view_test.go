@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
+
 	"github.com/lechero/dotfiles/apps/internal/disk/docker/dockertest"
 )
 
@@ -68,7 +70,7 @@ func (a *app) dkSelect(t *testing.T, key string) {
 func TestDockerTabJudgesPicksAndRemoves(t *testing.T) {
 	a, fake := dockerApp(t, Options{})
 	press(t, a, "6")
-	out := a.view()
+	out := screen(a)
 	for _, want := range []string{"Docker's disk", "17.7 GiB free of 58.4 GiB", "✓ unused", "∅ orphan", "◷ old", "◆ data",
 		"feature-web-1", "<untagged>", "Build cache unused for a week", "its compose project ran from ~/projects/app/.claude/worktrees/"} {
 		if !strings.Contains(out, want) {
@@ -97,15 +99,15 @@ func TestDockerTabJudgesPicksAndRemoves(t *testing.T) {
 	if !a.dk.chosen[web] || !a.dk.chosen[nginx] {
 		t.Errorf("picking the image should pick its stopped container: %v", a.dk.chosen)
 	}
-	if !strings.Contains(a.view(), "about 19.2 GiB free after") { // 17.7 GiB + 190 MB + 500 MB + 1 GB
-		t.Errorf("header should project the free space:\n%s", a.dkHeader())
+	if !strings.Contains(screen(a), "about 19.2 GiB free after") { // 17.7 GiB + 190 MB + 500 MB + 1 GB
+		t.Errorf("header should project the free space:\n%s", ansi.Strip(a.dkHeader()))
 	}
 
 	press(t, a, "c") // looks again, then asks
-	if a.dk.mode != dkConfirm || !strings.Contains(a.view(), "Remove 4 resources") {
-		t.Fatalf("c should re-check and ask: mode %d\n%s", a.dk.mode, a.view())
+	if a.dk.mode != dkConfirm || !strings.Contains(screen(a), "Remove 4 resources") {
+		t.Fatalf("c should re-check and ask: mode %d\n%s", a.dk.mode, screen(a))
 	}
-	if strings.Contains(a.view(), "gone for good") {
+	if strings.Contains(screen(a), "gone for good") {
 		t.Error("no volume is picked, so no data warning")
 	}
 	fake.Set(t, "run", "Filesystem 1-blocks Used Available Capacity Mounted on\noverlay 62671097856 41708727296 20962370560 67% /\n")
@@ -118,7 +120,7 @@ func TestDockerTabJudgesPicksAndRemoves(t *testing.T) {
 	if got := fake.Changes(); !slices.Equal(got, want) {
 		t.Errorf("changes = %v\nwant      %v", got, want)
 	}
-	if out := a.view(); !strings.Contains(out, "Docker's disk 17.7 GiB → 19.5 GiB free") {
+	if out := screen(a); !strings.Contains(out, "Docker's disk 17.7 GiB → 19.5 GiB free") {
 		t.Errorf("done view should show Docker's disk before and after:\n%s", out)
 	}
 	press(t, a, "enter")
@@ -136,7 +138,7 @@ func TestDockerVolumesAreOnlyEverPickedByHandAndWarned(t *testing.T) {
 		t.Fatalf("picking a volume picks the stopped container mounting it: %v", a.dk.chosen)
 	}
 	press(t, a, "c")
-	if out := a.view(); !strings.Contains(out, "1 volume: the data in them is gone for good") {
+	if out := screen(a); !strings.Contains(out, "1 volume: the data in them is gone for good") {
 		t.Errorf("confirm should warn about the volume's data:\n%s", out)
 	}
 	press(t, a, "n")
@@ -159,7 +161,7 @@ func TestDockerDryRunRemovesNothing(t *testing.T) {
 	if changes := fake.Changes(); len(changes) > 0 {
 		t.Errorf("a dry run ran %v", changes)
 	}
-	if out := a.view(); !strings.Contains(out, "Dry run finished") {
+	if out := screen(a); !strings.Contains(out, "Dry run finished") {
 		t.Errorf("done view:\n%s", out)
 	}
 }
@@ -170,7 +172,7 @@ func TestDockerNotRunning(t *testing.T) {
 	a.env.Command, a.env.LookPath = fake.Command, fake.LookPath
 	drive(t, a, a.auditDocker())
 	press(t, a, "6")
-	if out := a.view(); !strings.Contains(out, "Docker isn't running. Start Docker Desktop, then press r.") {
+	if out := screen(a); !strings.Contains(out, "Docker isn't running. Start Docker Desktop, then press r.") {
 		t.Errorf("view:\n%s", out)
 	}
 	press(t, a, "c")
@@ -184,7 +186,7 @@ func TestDockerSuggestPicksTheCheapestWayToTheTarget(t *testing.T) {
 	target := int64(18962370560) + 1200<<20
 	a, fake := dockerApp(t, Options{DockerTarget: target})
 	press(t, a, "6", "n")
-	if out := a.dkHeader(); !strings.Contains(out, "Target 18.8 GiB free: 1.2 GiB to go · s picks the cheapest way there: 2 resources") {
+	if out := ansi.Strip(a.dkHeader()); !strings.Contains(out, "Target 18.8 GiB free: 1.2 GiB to go · s picks the cheapest way there: 2 resources") {
 		t.Errorf("header should show the target and what s would pick:\n%s", out)
 	}
 	press(t, a, "s")
@@ -201,11 +203,11 @@ func TestDockerSuggestPicksTheCheapestWayToTheTarget(t *testing.T) {
 	if !strings.Contains(a.flash, "Picked the cheapest way to 18.8 GiB free") {
 		t.Errorf("flash %q", a.flash)
 	}
-	if !strings.Contains(a.dkHeader(), "your picks get there") {
-		t.Errorf("header:\n%s", a.dkHeader())
+	if !strings.Contains(ansi.Strip(a.dkHeader()), "your picks get there") {
+		t.Errorf("header:\n%s", ansi.Strip(a.dkHeader()))
 	}
 	press(t, a, "c")
-	if out := a.view(); !strings.Contains(out, "That meets the 18.8 GiB target") {
+	if out := screen(a); !strings.Contains(out, "That meets the 18.8 GiB target") {
 		t.Errorf("confirm should say the target is met:\n%s", out)
 	}
 	press(t, a, "n")
@@ -223,7 +225,7 @@ func TestDockerSuggestNeverPicksVolumesWhenShort(t *testing.T) {
 	if !strings.Contains(a.flash, "short of 22.0 GiB") || !strings.Contains(a.flash, "feature_data") {
 		t.Errorf("flash should say it's short and name the volume that could cover it: %q", a.flash)
 	}
-	if out := a.dkHeader(); !strings.Contains(out, "short") || !strings.Contains(out, "Target 22.0 GiB free") {
+	if out := ansi.Strip(a.dkHeader()); !strings.Contains(out, "short") || !strings.Contains(out, "Target 22.0 GiB free") {
 		t.Errorf("header:\n%s", out)
 	}
 }

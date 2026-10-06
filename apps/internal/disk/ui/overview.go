@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/table"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/table"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/clean"
 	"github.com/lechero/dotfiles/apps/internal/disk/human"
@@ -16,10 +16,14 @@ import (
 )
 
 func newSpotsTable() table.Model {
+	return table.New(table.WithFocused(true), table.WithStyles(spotsStyles()))
+}
+
+func spotsStyles() table.Styles {
 	s := table.DefaultStyles()
 	s.Header = s.Header.BorderStyle(lipgloss.NormalBorder()).BorderForeground(colFaint).BorderBottom(true).Bold(true)
 	s.Selected = s.Selected.Foreground(lipgloss.Color("#FFFFFF")).Background(lipgloss.Color("#6D28D9")).Bold(false)
-	return table.New(table.WithFocused(true), table.WithStyles(s))
+	return s
 }
 
 // refreshSpots fills the biggest-spots table for the current width.
@@ -47,7 +51,7 @@ func (a *app) refreshSpots() {
 	a.spots.SetRows(rows)
 }
 
-func (a *app) overviewKey(msg tea.KeyMsg) tea.Cmd {
+func (a *app) overviewKey(msg tea.KeyPressMsg) tea.Cmd {
 	if key.Matches(msg, a.keys.SpotOpen) {
 		a.openSpot()
 		return nil
@@ -71,13 +75,13 @@ func (a *app) openSpot() {
 }
 
 func (a *app) overviewMouse(msg tea.MouseMsg) tea.Cmd {
-	if msg.Action != tea.MouseActionPress {
+	if !pressed(msg) {
 		return nil
 	}
-	switch msg.Button {
-	case tea.MouseButtonWheelUp:
+	switch msg.Mouse().Button {
+	case tea.MouseWheelUp:
 		a.spots.MoveUp(1)
-	case tea.MouseButtonWheelDown:
+	case tea.MouseWheelDown:
 		a.spots.MoveDown(1)
 	}
 	return nil
@@ -91,7 +95,7 @@ func (a *app) scanStatus() string {
 		if a.lastScan.Files > 0 {
 			// The previous scan's file count makes a fair yardstick for this one.
 			frac := min(0.99, float64(p.Files())/float64(a.lastScan.Files))
-			a.scanBar.Width = min(40, max(10, a.w/3))
+			a.scanBar.SetWidth(min(40, max(10, a.w/3)))
 			line = "Scanning " + a.scanBar.ViewAs(frac) + sDim.Render(fmt.Sprintf("  %s files · %s · %s",
 				human.Count(p.Files()), human.Bytes(p.Bytes()), elapsed))
 		} else {

@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/clean"
 	"github.com/lechero/dotfiles/apps/internal/disk/docker"
@@ -74,7 +74,7 @@ func main() {
 	switch cmd {
 	case "":
 		opts := ui.Options{DryRun: *dryRun, IncludePrivate: *private, DockerTarget: targetBytes}
-		p := tea.NewProgram(ui.New(env, opts), tea.WithAltScreen(), tea.WithMouseCellMotion())
+		p := tea.NewProgram(ui.New(env, opts))
 		if _, err := p.Run(); err != nil {
 			fail(err)
 		}

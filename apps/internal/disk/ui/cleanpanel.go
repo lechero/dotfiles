@@ -5,10 +5,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/clean"
 	"github.com/lechero/dotfiles/apps/internal/disk/human"
@@ -140,7 +140,7 @@ func (a *app) selectedTotals() (size int64, n, blocked int) {
 	return size, n, blocked
 }
 
-func (a *app) cleanKey(msg tea.KeyMsg) tea.Cmd {
+func (a *app) cleanKey(msg tea.KeyPressMsg) tea.Cmd {
 	c, k := &a.cl, a.keys
 	switch c.mode {
 	case modeList:
@@ -148,7 +148,7 @@ func (a *app) cleanKey(msg tea.KeyMsg) tea.Cmd {
 	case modeDetail:
 		return a.detailKey(msg)
 	case modePreparing:
-		if msg.Type == tea.KeyEsc || msg.Type == tea.KeyCtrlC || msg.String() == "n" {
+		if msg.String() == "esc" || msg.String() == "ctrl+c" || msg.String() == "n" {
 			c.mode = modeList
 		}
 	case modeConfirm:
@@ -157,7 +157,7 @@ func (a *app) cleanKey(msg tea.KeyMsg) tea.Cmd {
 			return a.startCleanRun()
 		case key.Matches(msg, k.No):
 			c.mode = modeList
-		case msg.Type == tea.KeyCtrlC:
+		case msg.String() == "ctrl+c":
 			return tea.Quit
 		}
 	case modeRunning:
@@ -193,7 +193,7 @@ func (a *app) startCleanRun() tea.Cmd {
 	return a.startRun(tabClean, sels)
 }
 
-func (a *app) listKey(msg tea.KeyMsg) tea.Cmd {
+func (a *app) listKey(msg tea.KeyPressMsg) tea.Cmd {
 	c, k := &a.cl, a.keys
 	switch {
 	case key.Matches(msg, k.Up):
@@ -230,7 +230,7 @@ func (a *app) openDetail(i int) {
 	c.items.Select(0)
 }
 
-func (a *app) detailKey(msg tea.KeyMsg) tea.Cmd {
+func (a *app) detailKey(msg tea.KeyPressMsg) tea.Cmd {
 	c, k := &a.cl, a.keys
 	if c.items.SettingFilter() {
 		var cmd tea.Cmd
@@ -239,9 +239,9 @@ func (a *app) detailKey(msg tea.KeyMsg) tea.Cmd {
 	}
 	ts := a.tasks[c.task]
 	switch {
-	case msg.Type == tea.KeyEsc && c.items.IsFiltered():
+	case msg.String() == "esc" && c.items.IsFiltered():
 		c.items.ResetFilter()
-	case msg.Type == tea.KeyEsc || msg.Type == tea.KeyBackspace || msg.Type == tea.KeyLeft:
+	case msg.String() == "esc" || msg.String() == "backspace" || msg.String() == "left":
 		c.mode = modeList
 	case key.Matches(msg, k.Toggle):
 		if e, ok := c.selectedEntry(); ok {
@@ -277,25 +277,25 @@ func (a *app) cleanMouse(msg tea.MouseMsg) tea.Cmd {
 	case modeRunning, modeDone:
 		return a.runMouse(msg)
 	case modeDetail:
-		if msg.Action == tea.MouseActionPress {
-			switch msg.Button {
-			case tea.MouseButtonWheelUp:
+		if pressed(msg) {
+			switch msg.Mouse().Button {
+			case tea.MouseWheelUp:
 				c.items.CursorUp()
-			case tea.MouseButtonWheelDown:
+			case tea.MouseWheelDown:
 				c.items.CursorDown()
 			}
 		}
 	case modeList:
-		if msg.Action != tea.MouseActionPress {
+		if !pressed(msg) {
 			return nil
 		}
-		switch msg.Button {
-		case tea.MouseButtonWheelUp:
+		switch msg.Mouse().Button {
+		case tea.MouseWheelUp:
 			c.cursor = max(0, c.cursor-1)
-		case tea.MouseButtonWheelDown:
+		case tea.MouseWheelDown:
 			c.cursor = min(len(a.tasks)-1, c.cursor+1)
-		case tea.MouseButtonLeft:
-			if i, ok := c.rowTask[msg.Y]; ok {
+		case tea.MouseLeft:
+			if i, ok := c.rowTask[msg.Mouse().Y]; ok {
 				if i == c.cursor {
 					a.openDetail(i)
 				} else {

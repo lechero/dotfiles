@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/clean"
 )
@@ -70,7 +70,7 @@ func TestWorktreesTabListsJudgesAndRemoves(t *testing.T) {
 	a, repo := worktreeApp(t, Options{})
 	merged, dirty := repo+"/.claude/worktrees/merged", repo+"/.claude/worktrees/dirty"
 	press(t, a, "5")
-	out := a.view()
+	out := screen(a)
 	for _, want := range []string{"2 worktrees in 1 repos", "✓ merged", "✗ keep", "app › merged", "1 changed file"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("worktrees tab is missing %q:\n%s", want, out)
@@ -92,8 +92,8 @@ func TestWorktreesTabListsJudgesAndRemoves(t *testing.T) {
 	}
 
 	press(t, a, "c") // checks again, then asks
-	if a.wt.mode != wtConfirm || !strings.Contains(a.view(), "Remove 1 worktree") {
-		t.Fatalf("c should re-check and ask: mode %d\n%s", a.wt.mode, a.view())
+	if a.wt.mode != wtConfirm || !strings.Contains(screen(a), "Remove 1 worktree") {
+		t.Fatalf("c should re-check and ask: mode %d\n%s", a.wt.mode, screen(a))
 	}
 	press(t, a, "y")
 	if a.wt.mode != wtDone {
@@ -123,7 +123,7 @@ func TestWorktreesDryRunRemovesNothing(t *testing.T) {
 	if uiGit(t, repo, "branch", "--list", "claude/merged") == "" {
 		t.Error("a dry run deleted a branch")
 	}
-	if !strings.Contains(a.view(), "Dry run finished") {
-		t.Errorf("done view:\n%s", a.view())
+	if !strings.Contains(screen(a), "Dry run finished") {
+		t.Errorf("done view:\n%s", screen(a))
 	}
 }

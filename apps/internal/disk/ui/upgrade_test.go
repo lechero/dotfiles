@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/clean"
 	"github.com/lechero/dotfiles/apps/internal/disk/scan"
@@ -21,7 +21,10 @@ func mapTree(home string) *scan.Node {
 }
 
 func click(a *app, x, y int, b tea.MouseButton) tea.Cmd {
-	return a.update(tea.MouseMsg{X: x, Y: y, Button: b, Action: tea.MouseActionPress})
+	if b == tea.MouseWheelUp || b == tea.MouseWheelDown {
+		return a.update(tea.MouseWheelMsg{X: x, Y: y, Button: b})
+	}
+	return a.update(tea.MouseClickMsg{X: x, Y: y, Button: b})
 }
 
 func TestMapShowsBlocksMovesAndZooms(t *testing.T) {
@@ -29,7 +32,7 @@ func TestMapShowsBlocksMovesAndZooms(t *testing.T) {
 	h := a.home
 	giveTree(a, mapTree(h))
 	press(t, a, "2")
-	out := a.view()
+	out := screen(a)
 	for _, want := range []string{"big/", "mid/", "file.bin", "▸ big/", "60.0 MiB"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("map is missing %q", want)
@@ -51,7 +54,7 @@ func TestMapShowsBlocksMovesAndZooms(t *testing.T) {
 	if a.exp.path != h+"/big" {
 		t.Fatalf("enter should zoom into big, path %s", a.exp.path)
 	}
-	if out := a.view(); !strings.Contains(out, "~ › big") {
+	if out := screen(a); !strings.Contains(out, "~ › big") {
 		t.Errorf("breadcrumb should show where we are:\n%s", out)
 	}
 	press(t, a, "esc")
@@ -70,7 +73,7 @@ func TestMapMouseSelectsThenZooms(t *testing.T) {
 	a := testApp(t, Options{})
 	giveTree(a, mapTree(a.home))
 	press(t, a, "2")
-	a.view()
+	screen(a)
 	var mid mapBlock
 	for _, b := range a.mp.blocks {
 		if b.name == "mid" {
@@ -78,15 +81,15 @@ func TestMapMouseSelectsThenZooms(t *testing.T) {
 		}
 	}
 	x, y := mid.cell.X+1, a.mp.top+mid.cell.Y+1
-	drive(t, a, click(a, x, y, tea.MouseButtonLeft))
+	drive(t, a, click(a, x, y, tea.MouseLeft))
 	if a.mp.sel != "mid" {
 		t.Fatalf("a click should select mid, got %q", a.mp.sel)
 	}
-	drive(t, a, click(a, x, y, tea.MouseButtonLeft))
+	drive(t, a, click(a, x, y, tea.MouseLeft))
 	if a.exp.path != a.home+"/mid" {
 		t.Errorf("clicking the selection should zoom in, path %s", a.exp.path)
 	}
-	drive(t, a, click(a, 0, a.mp.top, tea.MouseButtonRight))
+	drive(t, a, click(a, 0, a.mp.top, tea.MouseRight))
 	if a.exp.path != a.home {
 		t.Errorf("right-click should zoom out, path %s", a.exp.path)
 	}
@@ -94,9 +97,9 @@ func TestMapMouseSelectsThenZooms(t *testing.T) {
 
 func TestTabsAreClickable(t *testing.T) {
 	a := testApp(t, Options{})
-	a.view()
+	screen(a)
 	hit := a.tabHits[tabExplorer]
-	drive(t, a, click(a, hit.x0+1, 1, tea.MouseButtonLeft))
+	drive(t, a, click(a, hit.x0+1, 1, tea.MouseLeft))
 	if a.tab != tabExplorer {
 		t.Errorf("clicking the Explorer tab should open it, tab = %d", a.tab)
 	}
@@ -118,7 +121,7 @@ func TestExplorerFilter(t *testing.T) {
 	if len(rows) != 1 || rows[0].Name != "file.bin" || a.exp.filtering {
 		t.Errorf("filter fi should keep file.bin only, got %d rows, filtering %v", len(rows), a.exp.filtering)
 	}
-	if out := a.view(); !strings.Contains(out, "1 of 3") {
+	if out := screen(a); !strings.Contains(out, "1 of 3") {
 		t.Errorf("the filter line should count matches:\n%s", out)
 	}
 	press(t, a, "esc")
@@ -149,7 +152,7 @@ func TestSpotOpensInTheMap(t *testing.T) {
 		node("projects", 20<<30, node("app", 20<<30, node("a", 8<<30), node("b", 7<<30), node("c", 5<<30))),
 		node("Library", 10<<30, node("Caches", 10<<30, &scan.Node{Name: "huge.bin", Size: 10 << 30, Files: 1})),
 	))
-	a.view()
+	screen(a)
 	press(t, a, "down", "enter") // second spot: huge.bin
 	if a.tab != tabMap || a.exp.path != h+"/Library/Caches" || a.mp.sel != "huge.bin" {
 		t.Errorf("enter should open the spot in the map: tab %d path %s sel %q", a.tab, a.exp.path, a.mp.sel)
@@ -180,7 +183,7 @@ func TestItemListTogglesAndFilters(t *testing.T) {
 	if n := len(a.cl.items.VisibleItems()); n != 1 {
 		t.Fatalf("filtering bet should leave beta alone, got %d", n)
 	}
-	if out := a.view(); !strings.Contains(out, "beta") || strings.Contains(out, "gamma") {
+	if out := screen(a); !strings.Contains(out, "beta") || strings.Contains(out, "gamma") {
 		t.Errorf("filtered list:\n%s", out)
 	}
 	press(t, a, "esc")

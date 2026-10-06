@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/human"
 	"github.com/lechero/dotfiles/apps/internal/disk/scan"
@@ -84,16 +84,16 @@ func (e *explorerState) enter(path string) {
 	e.filter.SetValue("")
 }
 
-func (a *app) explorerKey(msg tea.KeyMsg) tea.Cmd {
+func (a *app) explorerKey(msg tea.KeyPressMsg) tea.Cmd {
 	e := &a.exp
 	if e.filtering {
-		switch msg.Type {
-		case tea.KeyEsc:
+		switch msg.String() {
+		case "esc":
 			e.filtering = false
 			e.filter.SetValue("")
 			e.filter.Blur()
 			return nil
-		case tea.KeyEnter:
+		case "enter":
 			e.filtering = false
 			e.filter.Blur()
 			return nil
@@ -128,7 +128,7 @@ func (a *app) explorerKey(msg tea.KeyMsg) tea.Cmd {
 		e.cursor = e.rowCount(n) - 1
 	case key.Matches(msg, k.ExpOpen):
 		a.explorerOpen(n, rows)
-	case msg.Type == tea.KeyEsc && e.filter.Value() != "":
+	case msg.String() == "esc" && e.filter.Value() != "":
 		e.filter.SetValue("") // esc first clears a kept filter, then goes up
 	case key.Matches(msg, k.ExpBack):
 		if n.Parent != nil {
@@ -165,24 +165,24 @@ func (a *app) explorerOpen(n *scan.Node, rows []*scan.Node) {
 
 // explorerMouse: wheel scrolls, a click selects, clicking the selection opens it.
 func (a *app) explorerMouse(msg tea.MouseMsg) tea.Cmd {
-	if a.res == nil || msg.Action != tea.MouseActionPress {
+	if a.res == nil || !pressed(msg) {
 		return nil
 	}
 	e := &a.exp
 	n := e.current(a.res.Root)
-	switch msg.Button {
-	case tea.MouseButtonWheelUp:
+	switch msg.Mouse().Button {
+	case tea.MouseWheelUp:
 		e.cursor = max(0, e.cursor-3)
-	case tea.MouseButtonWheelDown:
+	case tea.MouseWheelDown:
 		e.cursor = min(e.rowCount(n)-1, e.cursor+3)
-	case tea.MouseButtonRight:
+	case tea.MouseRight:
 		if n.Parent != nil {
 			from := n.Name
 			e.enter(n.Parent.Path())
 			e.selectName(n.Parent, from)
 		}
-	case tea.MouseButtonLeft:
-		row := e.offset + msg.Y - e.top
+	case tea.MouseLeft:
+		row := e.offset + msg.Mouse().Y - e.top
 		if row < 0 || row >= e.rowCount(n) {
 			return nil
 		}
@@ -209,7 +209,7 @@ func (a *app) explorerView(h int) string {
 	}
 	second := ""
 	if e.filtering || e.filter.Value() != "" {
-		e.filter.Width = max(10, a.w/3)
+		e.filter.SetWidth(max(10, a.w/3))
 		second = e.filter.View() + sDim.Render(fmt.Sprintf("  %d of %d", len(rows), len(n.Children)))
 	}
 

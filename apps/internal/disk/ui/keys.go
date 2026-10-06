@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
 )
 
 // keyMap is every binding, so a key means one thing in one place and the help
@@ -56,7 +56,7 @@ func newKeyMap() keyMap {
 		Home:     b([]string{"home", "g"}, "g", "first"),
 		End:      b([]string{"end", "G"}, "G", "last"),
 
-		MapOpen:   b([]string{"enter", " "}, "enter", "zoom in"),
+		MapOpen:   b([]string{"enter", "space"}, "enter", "zoom in"),
 		MapBack:   b([]string{"backspace", "esc", "u"}, "⌫/esc", "zoom out"),
 		Nested:    b([]string{"v"}, "v", "nested blocks on/off"),
 		NextBlock: b([]string{"]", "n"}, "]", "next block"),
@@ -69,7 +69,7 @@ func newKeyMap() keyMap {
 
 		SpotOpen: b([]string{"enter"}, "enter", "open spot in map"),
 
-		Toggle:   b([]string{" ", "x"}, "space", "switch on/off"),
+		Toggle:   b([]string{"space", "x"}, "space", "switch on/off"),
 		AllTier1: b([]string{"a"}, "a", "all"),
 		None:     b([]string{"n"}, "n", "none"),
 		DryRun:   b([]string{"d"}, "d", "dry run on/off"),

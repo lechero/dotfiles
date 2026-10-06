@@ -1,14 +1,16 @@
 package ui
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"image/color"
+
+	"charm.land/lipgloss/v2"
 	"github.com/lucasb-eyer/go-colorful"
 )
 
 // shade is one colour family: a block, two alternating tones for the blocks
 // nested inside it, and a brighter tone for when it is selected.
 type shade struct {
-	base, a, b, hi lipgloss.Color
+	base, a, b, hi color.Color
 }
 
 // hues are ordered so that neighbouring indexes are far apart on the wheel.
@@ -22,10 +24,10 @@ var shades = func() []shade {
 	return out
 }()
 
-var greyShade = shade{base: "#3F434C", a: "#4B505A", b: "#555B66", hi: "#6B7280"}
+var greyShade = shade{base: lipgloss.Color("#3F434C"), a: lipgloss.Color("#4B505A"), b: lipgloss.Color("#555B66"), hi: lipgloss.Color("#6B7280")}
 
 // Text on blocks: light on every shade above, dimmer for secondary lines.
-const (
+var (
 	blockText    = lipgloss.Color("#F8FAFC")
 	blockSubtext = lipgloss.Color("#CBD5E1")
 )
@@ -37,7 +39,7 @@ func shadeFor(i int) shade {
 	return shades[i%len(shades)]
 }
 
-func hsl(h, s, l float64) lipgloss.Color { return lipgloss.Color(colorful.Hsl(h, s, l).Hex()) }
+func hsl(h, s, l float64) color.Color { return lipgloss.Color(colorful.Hsl(h, s, l).Hex()) }
 
 // categoryHue colours the overview's categories; the map reuses the same
 // hues for the folders those categories are made of.
@@ -53,9 +55,9 @@ var categoryHue = map[string]float64{
 	"Media & personal":       340,
 }
 
-func categoryColor(name string) lipgloss.Color {
+func categoryColor(name string) color.Color {
 	if h, ok := categoryHue[name]; ok {
 		return hsl(h, 0.62, 0.55)
 	}
-	return "#6B7280"
+	return lipgloss.Color("#6B7280")
 }

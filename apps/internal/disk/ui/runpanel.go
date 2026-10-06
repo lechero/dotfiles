@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/stopwatch"
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/progress"
+	"charm.land/bubbles/v2/stopwatch"
+	"charm.land/bubbles/v2/viewport"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/clean"
 	"github.com/lechero/dotfiles/apps/internal/disk/human"
@@ -43,9 +43,9 @@ type runState struct {
 
 func newRunPanel() runPanel {
 	return runPanel{
-		bar:   progress.New(progress.WithDefaultGradient()),
-		watch: stopwatch.NewWithInterval(time.Second),
-		log:   viewport.New(0, 0),
+		bar:   progress.New(progress.WithDefaultBlend()),
+		watch: stopwatch.New(stopwatch.WithInterval(time.Second)),
+		log:   viewport.New(),
 	}
 }
 
@@ -174,7 +174,7 @@ func (a *app) onRunDone(sum clean.Summary) tea.Cmd {
 }
 
 // runKey handles keys while a run is in flight.
-func (a *app) runKey(msg tea.KeyMsg) tea.Cmd {
+func (a *app) runKey(msg tea.KeyPressMsg) tea.Cmd {
 	r := &a.run
 	if key.Matches(msg, a.keys.Stop) && r.cancel != nil {
 		r.cancel()
@@ -187,9 +187,9 @@ func (a *app) runKey(msg tea.KeyMsg) tea.Cmd {
 }
 
 // doneKey handles keys on a run's summary; back reports that it is dismissed.
-func (a *app) doneKey(msg tea.KeyMsg) (back bool, cmd tea.Cmd) {
+func (a *app) doneKey(msg tea.KeyPressMsg) (back bool, cmd tea.Cmd) {
 	switch {
-	case msg.Type == tea.KeyCtrlC:
+	case msg.String() == "ctrl+c":
 		return false, tea.Quit
 	case key.Matches(msg, a.keys.Done):
 		a.run.summary = nil
@@ -215,7 +215,7 @@ func (a *app) runningView(h int) string {
 	if st.stopping {
 		title = " Stopping after the current item…"
 	}
-	r.bar.Width = max(10, min(60, a.w-40))
+	r.bar.SetWidth(max(10, min(60, a.w-40)))
 	var b strings.Builder
 	b.WriteString(a.spin.View() + sBold.Render(title) + sDim.Render("  "+r.watch.View()) + "\n\n")
 	b.WriteString(r.bar.View() + fmt.Sprintf("  %s / %s · %d of %d items\n",
@@ -224,7 +224,8 @@ func (a *app) runningView(h int) string {
 		b.WriteString(sDim.Render("now: "+truncRight(st.cur.Task+" — "+st.cur.Item, max(10, a.w-6))) + "\n")
 	}
 	b.WriteString("\n")
-	r.log.Width, r.log.Height = a.w, max(1, h-6)
+	r.log.SetWidth(a.w)
+	r.log.SetHeight(max(1, h-6))
 	b.WriteString(r.log.View())
 	return b.String()
 }
@@ -271,7 +272,8 @@ func (a *app) doneView(h int) string {
 		b.WriteString(sDim.Render("Log: "+tildePath(a.home, s.LogPath)) + "\n")
 	}
 	b.WriteString("\n")
-	r.log.Width, r.log.Height = a.w, max(1, h-lipgloss.Height(b.String()))
+	r.log.SetWidth(a.w)
+	r.log.SetHeight(max(1, h-lipgloss.Height(b.String())))
 	b.WriteString(r.log.View())
 	return b.String()
 }

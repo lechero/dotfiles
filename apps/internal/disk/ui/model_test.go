@@ -10,8 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/clean"
 	"github.com/lechero/dotfiles/apps/internal/disk/scan"
@@ -41,20 +42,24 @@ func giveTree(a *app, root *scan.Node, private ...string) {
 	a.update(scanDoneMsg{gen: a.scanGen, res: &scan.Result{Root: root, Took: time.Second, Private: private}})
 }
 
+// screen is what the app shows, as plain text: Lip Gloss v2 always styles,
+// and the program strips what the terminal can't show.
+func screen(a *app) string { return ansi.Strip(a.view()) }
+
+// namedKeys are the keys tests press by name; anything else is typed text.
+var namedKeys = map[string]rune{
+	"enter": tea.KeyEnter, "esc": tea.KeyEscape, "backspace": tea.KeyBackspace, "tab": tea.KeyTab,
+	"left": tea.KeyLeft, "right": tea.KeyRight, "up": tea.KeyUp, "down": tea.KeyDown,
+}
+
 func keyMsg(s string) tea.Msg {
-	switch s {
-	case "enter":
-		return tea.KeyMsg{Type: tea.KeyEnter}
-	case "esc":
-		return tea.KeyMsg{Type: tea.KeyEscape}
-	case "left":
-		return tea.KeyMsg{Type: tea.KeyLeft}
-	case "down":
-		return tea.KeyMsg{Type: tea.KeyDown}
-	case " ":
-		return tea.KeyMsg{Type: tea.KeySpace}
+	if code, ok := namedKeys[s]; ok {
+		return tea.KeyPressMsg{Code: code}
 	}
-	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
+	if s == " " {
+		return tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
+	}
+	return tea.KeyPressMsg{Code: []rune(s)[0], Text: s}
 }
 
 // drive runs cmd and feeds what it produces back into the app, like the
@@ -97,7 +102,7 @@ func TestOverviewShowsCategoriesHotspotsAndPrivacy(t *testing.T) {
 		node("Library", 10<<30, node("Caches", 10<<30, &scan.Node{Name: "huge.bin", Size: 10 << 30, Files: 1}), containers),
 	)
 	giveTree(a, root, "Desktop", "Downloads", "Library/Containers", "Library/Group Containers", "Library/Mail")
-	out := a.view()
+	out := screen(a)
 	for _, want := range []string{"Where your space goes", "Projects & worktrees", "App & tool caches",
 		"Docker VM*", "not scanned, see * below", "Biggest spots", "~/projects/app", "huge.bin",
 		"Desktop, Downloads, app containers (Docker's VM disk too), 1 more in Library", "Cleanable now"} {
@@ -118,7 +123,7 @@ func TestExplorerDrillsInAndOut(t *testing.T) {
 		&scan.Node{Name: "file.bin", Size: 10 << 20, Files: 1},
 	))
 	press(t, a, "3") // the explorer
-	if !strings.Contains(a.view(), "big/") {
+	if !strings.Contains(screen(a), "big/") {
 		t.Fatal("explorer should list the root's children")
 	}
 	press(t, a, "enter")
@@ -137,7 +142,7 @@ func TestExplorerDrillsInAndOut(t *testing.T) {
 	// The folder on screen vanishes (deleted by a clean): fall back to its parent.
 	a.exp.path = h + "/big/inner/deep"
 	a.env.EditTree(func(root *scan.Node) { root.Remove(h + "/big/inner") })
-	a.view()
+	screen(a)
 	if a.exp.path != h+"/big" {
 		t.Errorf("explorer should fall back to the nearest folder left, got %s", a.exp.path)
 	}
@@ -173,8 +178,8 @@ func cleanFlow(t *testing.T, dryRun bool) (*app, string) {
 	if a.cl.mode != modeConfirm {
 		t.Fatalf("after c the mode is %d, want confirm", a.cl.mode)
 	}
-	if !strings.Contains(a.view(), " 1 item, about") { // "Clean 1 item, about…" or "Dry run: 1 item, about…"
-		t.Errorf("confirm should count the item:\n%s", a.view())
+	if !strings.Contains(screen(a), " 1 item, about") { // "Clean 1 item, about…" or "Dry run: 1 item, about…"
+		t.Errorf("confirm should count the item:\n%s", screen(a))
 	}
 	press(t, a, "y")
 	if a.cl.mode != modeDone || a.run.summary == nil {
@@ -191,7 +196,7 @@ func TestCleanFlowDeletesAndUpdatesTheTree(t *testing.T) {
 	if a.res.Root.Find(dir) != nil || a.res.Root.Size != 0 {
 		t.Errorf("the tree should drop the deleted folder, root size %d", a.res.Root.Size)
 	}
-	if out := a.view(); !strings.Contains(out, "Done in") || !strings.Contains(out, "1 done") {
+	if out := screen(a); !strings.Contains(out, "Done in") || !strings.Contains(out, "1 done") {
 		t.Errorf("done view:\n%s", out)
 	}
 	if a.last == nil {
@@ -211,7 +216,7 @@ func TestDryRunDeletesNothing(t *testing.T) {
 	if a.res.Root.Find(dir) == nil {
 		t.Error("a dry run must not touch the tree")
 	}
-	if out := a.view(); !strings.Contains(out, "Dry run finished") {
+	if out := screen(a); !strings.Contains(out, "Dry run finished") {
 		t.Errorf("done view:\n%s", out)
 	}
 }

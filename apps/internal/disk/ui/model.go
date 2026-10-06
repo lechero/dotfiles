@@ -8,15 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/charmbracelet/bubbles/spinner"
-	"github.com/charmbracelet/bubbles/stopwatch"
-	"github.com/charmbracelet/bubbles/table"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/help"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/progress"
+	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/stopwatch"
+	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/clean"
 	"github.com/lechero/dotfiles/apps/internal/disk/docker"
@@ -163,8 +164,8 @@ func New(env *clean.Env, opts Options) Model {
 		keys:     newKeyMap(),
 		helpBar:  help.New(),
 		spin:     spinner.New(spinner.WithSpinner(spinner.MiniDot), spinner.WithStyle(sAccent)),
-		gauge:    progress.New(progress.WithScaledGradient("#4ADE80", "#F87171"), progress.WithoutPercentage()),
-		scanBar:  progress.New(progress.WithDefaultGradient()),
+		gauge:    progress.New(progress.WithColors(lipgloss.Color("#4ADE80"), lipgloss.Color("#F87171")), progress.WithScaled(true), progress.WithoutPercentage()),
+		scanBar:  progress.New(progress.WithDefaultBlend()),
 		lastScan: loadScanStats(env.StateDir),
 		spots:    newSpotsTable(),
 	}
@@ -182,10 +183,36 @@ func New(env *clean.Env, opts Options) Model {
 
 func (m Model) Init() tea.Cmd                           { return m.a.init() }
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) { return m, m.a.update(msg) }
-func (m Model) View() string                            { return m.a.view() }
+
+// View draws the interface full screen, with the mouse on.
+func (m Model) View() tea.View {
+	v := tea.NewView(m.a.view())
+	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
+	v.WindowTitle = "manage-disk"
+	return v
+}
+
+// Content draws the interface as text, for a program that shows it inside
+// its own view. Size it with a tea.WindowSizeMsg for the space it gets, and
+// pass mouse events with Y counted from its top line.
+func (m Model) Content() string { return m.a.view() }
 
 func (a *app) init() tea.Cmd {
-	return tea.Batch(a.loadVolume(), a.loadHistory(), a.startScan(), a.discoverAll(), a.auditWorktrees(false), a.auditDocker())
+	return tea.Batch(a.loadVolume(), a.loadHistory(), a.startScan(), a.discoverAll(), a.auditWorktrees(false), a.auditDocker(),
+		tea.RequestBackgroundColor)
+}
+
+// applyTheme recolours everything for a dark or a light terminal background.
+func (a *app) applyTheme(isDark bool) {
+	setTheme(isDark)
+	a.helpBar.Styles = help.DefaultStyles(isDark)
+	a.spin.Style = sAccent
+	a.spots.SetStyles(spotsStyles())
+	a.exp.filter.SetStyles(textinput.DefaultStyles(isDark))
+	for _, l := range []*list.Model{&a.cl.items, &a.wt.list, &a.dk.list} {
+		l.Styles = list.DefaultStyles(isDark)
+	}
 }
 
 // busy reports whether anything on screen is still in motion.
@@ -217,9 +244,11 @@ func tick() tea.Cmd {
 
 func (a *app) update(msg tea.Msg) tea.Cmd {
 	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		a.applyTheme(msg.IsDark())
 	case tea.WindowSizeMsg:
 		a.w, a.h = msg.Width, msg.Height
-		a.helpBar.Width = msg.Width
+		a.helpBar.SetWidth(msg.Width)
 	case spinner.TickMsg:
 		if !a.busy() { // nothing moving: let the spinner sleep instead of redrawing ten times a second
 			a.spinning = false
@@ -229,8 +258,8 @@ func (a *app) update(msg tea.Msg) tea.Cmd {
 		a.spin, cmd = a.spin.Update(msg)
 		return cmd
 	case progress.FrameMsg:
-		m, cmd := a.run.bar.Update(msg)
-		a.run.bar = m.(progress.Model)
+		var cmd tea.Cmd
+		a.run.bar, cmd = a.run.bar.Update(msg)
 		return cmd
 	case stopwatch.TickMsg, stopwatch.StartStopMsg, stopwatch.ResetMsg:
 		var cmd tea.Cmd
@@ -285,7 +314,7 @@ func (a *app) update(msg tea.Msg) tea.Cmd {
 		}
 	case tea.MouseMsg:
 		return a.onMouse(msg)
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		return a.onKey(msg)
 	}
 	return nil
@@ -321,7 +350,7 @@ func (a *app) modal() bool {
 	return false
 }
 
-func (a *app) onKey(msg tea.KeyMsg) tea.Cmd {
+func (a *app) onKey(msg tea.KeyPressMsg) tea.Cmd {
 	a.flash = ""
 	k := a.keys
 	switch {
@@ -411,10 +440,26 @@ func (a *app) setTab(t int) {
 	a.tab = t
 }
 
+// pressed reports whether msg is a click or a turn of the wheel, the only
+// mouse events the tabs act on.
+func pressed(msg tea.MouseMsg) bool {
+	switch msg.(type) {
+	case tea.MouseClickMsg, tea.MouseWheelMsg:
+		return true
+	}
+	return false
+}
+
+// isClick reports whether msg is a click of button b.
+func isClick(msg tea.MouseMsg, b tea.MouseButton) bool {
+	click, ok := msg.(tea.MouseClickMsg)
+	return ok && click.Button == b
+}
+
 func (a *app) onMouse(msg tea.MouseMsg) tea.Cmd {
-	if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft && msg.Y == 1 {
+	if isClick(msg, tea.MouseLeft) && msg.Mouse().Y == 1 {
 		for _, h := range a.tabHits {
-			if msg.X >= h.x0 && msg.X < h.x1 && !a.modal() {
+			if x := msg.Mouse().X; x >= h.x0 && x < h.x1 && !a.modal() {
 				a.setTab(h.tab)
 				return nil
 			}
@@ -606,7 +651,7 @@ func (a *app) view() string {
 func (a *app) headerView() string {
 	line1 := sTitle.Render("manage-disk")
 	if a.volOK && a.vol.Total > 0 {
-		a.gauge.Width = min(40, max(10, a.w/4))
+		a.gauge.SetWidth(min(40, max(10, a.w/4)))
 		used := float64(a.vol.Used()) / float64(a.vol.Total)
 		line1 += "  " + a.gauge.ViewAs(used) + "  " + sBold.Render(human.Bytes(a.vol.Free)) +
 			sDim.Render(" free of "+human.Bytes(a.vol.Total))

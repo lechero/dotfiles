@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/clean"
 	"github.com/lechero/dotfiles/apps/internal/disk/human"
@@ -199,11 +199,11 @@ func wtSummary(w worktrees.Worktree) string {
 	return strings.Join(parts, " · ")
 }
 
-func (a *app) wtKey(msg tea.KeyMsg) tea.Cmd {
+func (a *app) wtKey(msg tea.KeyPressMsg) tea.Cmd {
 	w, k := &a.wt, a.keys
 	switch w.mode {
 	case wtPreparing:
-		if msg.Type == tea.KeyEsc || msg.Type == tea.KeyCtrlC {
+		if msg.String() == "esc" || msg.String() == "ctrl+c" {
 			w.mode = wtList
 		}
 		return nil
@@ -213,7 +213,7 @@ func (a *app) wtKey(msg tea.KeyMsg) tea.Cmd {
 			return a.wtStartRun()
 		case key.Matches(msg, k.No):
 			w.mode = wtList
-		case msg.Type == tea.KeyCtrlC:
+		case msg.String() == "ctrl+c":
 			return tea.Quit
 		}
 		return nil
@@ -234,7 +234,7 @@ func (a *app) wtKey(msg tea.KeyMsg) tea.Cmd {
 	}
 	e, hasSel := w.list.SelectedItem().(wtEntry)
 	switch {
-	case msg.Type == tea.KeyEsc && w.list.IsFiltered():
+	case msg.String() == "esc" && w.list.IsFiltered():
 		w.list.ResetFilter()
 	case key.Matches(msg, k.Toggle):
 		switch {
@@ -304,11 +304,11 @@ func (a *app) wtMouse(msg tea.MouseMsg) tea.Cmd {
 	case wtRunning, wtDone:
 		return a.runMouse(msg)
 	case wtList:
-		if msg.Action == tea.MouseActionPress {
-			switch msg.Button {
-			case tea.MouseButtonWheelUp:
+		if pressed(msg) {
+			switch msg.Mouse().Button {
+			case tea.MouseWheelUp:
 				a.wt.list.CursorUp()
-			case tea.MouseButtonWheelDown:
+			case tea.MouseWheelDown:
 				a.wt.list.CursorDown()
 			}
 		}

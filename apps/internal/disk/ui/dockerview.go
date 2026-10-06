@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/clean"
 	"github.com/lechero/dotfiles/apps/internal/disk/docker"
@@ -270,11 +270,11 @@ func dkBadge(v docker.Verdict) string {
 	return sRed.Render("✗ in use")
 }
 
-func (a *app) dkKey(msg tea.KeyMsg) tea.Cmd {
+func (a *app) dkKey(msg tea.KeyPressMsg) tea.Cmd {
 	d, k := &a.dk, a.keys
 	switch d.mode {
 	case dkPreparing:
-		if msg.Type == tea.KeyEsc || msg.Type == tea.KeyCtrlC {
+		if msg.String() == "esc" || msg.String() == "ctrl+c" {
 			d.mode = dkList
 		}
 		return nil
@@ -284,7 +284,7 @@ func (a *app) dkKey(msg tea.KeyMsg) tea.Cmd {
 			return a.dkStartRun()
 		case key.Matches(msg, k.No):
 			d.mode = dkList
-		case msg.Type == tea.KeyCtrlC:
+		case msg.String() == "ctrl+c":
 			return tea.Quit
 		}
 		return nil
@@ -305,7 +305,7 @@ func (a *app) dkKey(msg tea.KeyMsg) tea.Cmd {
 	}
 	e, hasSel := d.list.SelectedItem().(dkEntry)
 	switch {
-	case msg.Type == tea.KeyEsc && d.list.IsFiltered():
+	case msg.String() == "esc" && d.list.IsFiltered():
 		d.list.ResetFilter()
 	case key.Matches(msg, k.Toggle):
 		switch {
@@ -416,11 +416,11 @@ func (a *app) dkMouse(msg tea.MouseMsg) tea.Cmd {
 	case dkRunning, dkDone:
 		return a.runMouse(msg)
 	case dkList:
-		if msg.Action == tea.MouseActionPress {
-			switch msg.Button {
-			case tea.MouseButtonWheelUp:
+		if pressed(msg) {
+			switch msg.Mouse().Button {
+			case tea.MouseWheelUp:
 				a.dk.list.CursorUp()
-			case tea.MouseButtonWheelDown:
+			case tea.MouseWheelDown:
 				a.dk.list.CursorDown()
 			}
 		}
@@ -512,7 +512,7 @@ func (a *app) dkHeader() string {
 	disk := d.rep.Disk
 	line := sHeading.Render("Docker's disk") + "  "
 	if disk.OK() {
-		a.gauge.Width = min(40, max(10, a.w/4))
+		a.gauge.SetWidth(min(40, max(10, a.w/4)))
 		line += a.gauge.ViewAs(float64(disk.Used())/float64(disk.Total)) + "  " + sBold.Render(human.Bytes(disk.Free)) +
 			sDim.Render(" free of "+human.Bytes(disk.Total)+" inside Docker's VM")
 	} else {
