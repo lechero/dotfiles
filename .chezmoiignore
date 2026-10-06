@@ -10,6 +10,8 @@ cv
 scripts
 state
 packages.yaml
+dotui
+packages.yaml
 
 # Neovim
 **/autoload/
