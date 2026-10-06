@@ -20,7 +20,6 @@ LOG_FILE="$LOG_DIR/run.log"
 
 DRY_RUN=0
 USE_AI=1
-USE_CONV=0
 RANGE_ARG=""
 SINCE_ARG=""
 UNTIL_ARG=""
@@ -65,12 +64,11 @@ while [[ $# -gt 0 ]]; do
     --branch) BRANCH_ARG="${2:-}"; shift 2;;
     --dry-run) DRY_RUN=1; shift;;
     --no-ai) USE_AI=0; shift;;
-    --conv) USE_CONV=1; shift;;
     --verbose) VERBOSE=1; shift;;
     -h|--help)
       cat <<'HLP'
 Usage:
-  ./scripts/git2jira.sh [--range <git-range>] [--since <date>] [--until <date>] [--branch <main>] [--dry-run] [--no-ai] [--conv] [--verbose]
+  ./scripts/git2jira.sh [--range <git-range>] [--since <date>] [--until <date>] [--branch <main>] [--dry-run] [--no-ai] [--verbose]
 
 Examples:
   ./scripts/git2jira.sh --range origin/main..HEAD
