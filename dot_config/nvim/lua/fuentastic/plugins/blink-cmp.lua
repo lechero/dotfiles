@@ -39,8 +39,16 @@ return {
       ['<S-Tab>'] = { 'snippet_backward', 'fallback' },
     },
     completion = {
-      -- the first item is selected, and moving to another one inserts it
-      list = { selection = { preselect = true, auto_insert = true } },
+      -- The first item is selected, and moving to another one inserts it. Not in markdown, where
+      -- <CR> should end the line, and obsidian's first item is often "[[Note]] (create)".
+      list = {
+        selection = {
+          preselect = function()
+            return vim.bo.filetype ~= 'markdown'
+          end,
+          auto_insert = true,
+        },
+      },
       documentation = { auto_show = true, auto_show_delay_ms = 200 },
     },
     sources = {
