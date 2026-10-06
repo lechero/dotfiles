@@ -46,6 +46,10 @@ local function setup_lsp_keymaps(event)
     })
   end
 
+  if client and client.name == 'eslint' then
+    map('<leader>ce', '<Cmd>LspEslintFixAll<CR>', 'Apply all [E]SLint fixes')
+  end
+
   -- Not gated on the capability: jdtls only registers inlay hints after attaching.
   map('<leader>th', function()
     vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled({ bufnr = event.buf }))
@@ -74,6 +78,24 @@ local function setup_lsp()
   -- in .gitlab/ci/ that the pipeline includes are named anything.
   local gitlab_ci_schema = 'https://gitlab.com/gitlab-org/gitlab-foss/-/raw/master/app/assets/javascripts/editor/schema/ci.json'
 
+  -- The `--flag`s a project's own lint scripts pass to ESLint (`eslint ./ --flag
+  -- v10_config_lookup_from_file`), so the editor picks the same config files as CI.
+  local function eslint_flags(root)
+    local flags = {}
+    for _, file in ipairs(vim.list_extend({ root .. '/package.json' }, vim.fn.glob(root .. '/*/package.json', false, true))) do
+      local ok, package = pcall(vim.json.decode, table.concat(vim.fn.readfile(file), '\n'))
+      for _, script in pairs(ok and type(package) == 'table' and package.scripts or {}) do
+        for flag in script:gmatch('eslint%s.-%-%-flag[%s=]+([%w_]+)') do
+          if not vim.list_contains(flags, flag) then
+            table.insert(flags, flag)
+          end
+        end
+      end
+    end
+    return flags
+  end
+  local eslint_before_init = vim.lsp.config.eslint.before_init
+
   local servers = {
     rust_analyzer = {},
     ts_ls = {
@@ -93,6 +115,15 @@ local function setup_lsp()
     },
     -- extends, needs, !reference, includes and components (doc/gitlab.md); needs Rust 1.85+ to build
     gitlab_ci_ls = {},
+    -- Only in projects with an ESLint config, with the project's own ESLint (doc/linting.md). Not as
+    -- a formatter: its fixes rewrite code (let to const...), so they're <leader>ce, not on save.
+    eslint = {
+      settings = { format = false },
+      before_init = function(params, config)
+        eslint_before_init(params, config)
+        config.settings.options = { flags = eslint_flags(config.root_dir) }
+      end,
+    },
     -- .content.xml, pom.xml (against the schema it declares). No formatting: AEM's XML stays as
     -- written. Turned off client-side: with xml.format.enabled = false, lemminx unregisters its
     -- formatter with an empty request that nvim rejects, and the formatter stays.
