@@ -93,6 +93,29 @@ local function setup_lsp()
     },
     -- extends, needs, !reference, includes and components (doc/gitlab.md); needs Rust 1.85+ to build
     gitlab_ci_ls = {},
+    -- .content.xml, pom.xml (against the schema it declares). No formatting: AEM's XML stays as
+    -- written. Turned off client-side: with xml.format.enabled = false, lemminx unregisters its
+    -- formatter with an empty request that nvim rejects, and the formatter stays.
+    lemminx = {
+      capabilities = {
+        textDocument = { formatting = { dynamicRegistration = false }, rangeFormatting = { dynamicRegistration = false } },
+      },
+      on_init = function(client)
+        client.server_capabilities.documentFormattingProvider = false
+        client.server_capabilities.documentRangeFormattingProvider = false
+      end,
+    },
+    -- package.json, tsconfig.json, renovate.json, .stylelintrc...: SchemaStore's schemas. OSGi
+    -- configs and the like stay as written: no formatting.
+    jsonls = {
+      init_options = { provideFormatter = false },
+      settings = {
+        json = {
+          schemas = require('schemastore').json.schemas(),
+          validate = { enable = true },
+        },
+      },
+    },
     lua_ls = {
       settings = {
         Lua = {
@@ -157,6 +180,7 @@ return {
         },
       },
       'WhoIsSethDaniel/mason-tool-installer.nvim',
+      'b0o/SchemaStore.nvim', -- jsonls' schemas
       { 'j-hui/fidget.nvim', opts = {} },
       'hrsh7th/cmp-nvim-lsp',
       'hrsh7th/cmp-cmdline',
