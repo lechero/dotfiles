@@ -67,6 +67,10 @@ local function setup_lsp()
     configNamespace = 'typescript',
   }
 
+  -- GitLab's CI schema. SchemaStore already maps .gitlab-ci.yml and *.gitlab-ci.yml to it; files
+  -- in .gitlab/ci/ that the pipeline includes are named anything.
+  local gitlab_ci_schema = 'https://gitlab.com/gitlab-org/gitlab-foss/-/raw/master/app/assets/javascripts/editor/schema/ci.json'
+
   local servers = {
     rust_analyzer = {},
     ts_ls = {
@@ -74,6 +78,18 @@ local function setup_lsp()
       filetypes = { 'javascript', 'javascriptreact', 'typescript', 'typescriptreact', 'vue' },
     },
     vue_ls = {},
+    yamlls = {
+      settings = {
+        yaml = {
+          schemas = { [gitlab_ci_schema] = { '.gitlab/ci/**/*.yml', '.gitlab/ci/**/*.yaml' } },
+          customTags = { '!reference sequence' }, -- GitLab's; otherwise "Unresolved tag" on each use
+          format = { enable = false }, -- it would rewrite CI files on save (lspconfig turns it on)
+        },
+      },
+      on_init = function() end, -- lspconfig's claims formatting support regardless
+    },
+    -- extends, needs, !reference, includes and components (doc/gitlab.md); needs Rust 1.85+ to build
+    gitlab_ci_ls = {},
     lua_ls = {
       settings = {
         Lua = {

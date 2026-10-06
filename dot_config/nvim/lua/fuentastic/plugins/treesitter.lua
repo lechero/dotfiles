@@ -55,6 +55,9 @@ return {
       end,
     })
 
+    -- GitLab CI files (ftdetect/gitlab-ci.lua). A FileType autocmd for yaml doesn't fire for them.
+    vim.treesitter.language.register('yaml', 'yaml.gitlab')
+
     -- Skips what's already installed. Parsers and their queries land in stdpath('data')/site,
     -- which is ahead of the plugin dir on the runtimepath.
     require('nvim-treesitter').install(parsers)
