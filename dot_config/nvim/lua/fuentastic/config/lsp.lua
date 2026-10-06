@@ -63,7 +63,7 @@ local function setup_lsp()
   })
 
   local capabilities = vim.lsp.protocol.make_client_capabilities()
-  capabilities = vim.tbl_deep_extend('force', capabilities, require('cmp_nvim_lsp').default_capabilities())
+  capabilities = vim.tbl_deep_extend('force', capabilities, require('blink.cmp').get_lsp_capabilities())
 
   -- vue_ls only handles a .vue file's template and styles; it forwards the TypeScript to ts_ls
   -- (lspconfig's vue_ls on_init), which needs the Vue plugin that vue-language-server ships.
@@ -214,10 +214,7 @@ return {
       'WhoIsSethDaniel/mason-tool-installer.nvim',
       'b0o/SchemaStore.nvim', -- jsonls' schemas
       { 'j-hui/fidget.nvim', opts = {} },
-      'hrsh7th/cmp-nvim-lsp',
-      'hrsh7th/cmp-cmdline',
-      'hrsh7th/cmp-buffer',
-      'hrsh7th/cmp-path',
+      'saghen/blink.cmp', -- its completion capabilities
     },
     config = setup_lsp,
   },
