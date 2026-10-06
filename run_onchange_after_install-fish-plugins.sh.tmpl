@@ -11,6 +11,10 @@ command -v fish >/dev/null 2>&1 || exit 0
 fisher_url=https://raw.githubusercontent.com/jorgebucaran/fisher/4.4.8/functions/fisher.fish
 fisher_sha256=0fb6c81ae3003e95b5671766fa6c25c3597066e29965b7772f6c1b007387356d
 
+# fisher reads extra plugin names from stdin when it isn't a terminal, and
+# would wait forever on one that never closes, so give it an empty one.
+exec </dev/null
+
 if fish -c 'functions -q fisher'; then
   fish -c 'fisher update'
 else
