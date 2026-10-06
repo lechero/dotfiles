@@ -3,7 +3,7 @@ return {
   {
     'Dotfiles',
     'e',
-    '/Users/miguelfuentes/.dotfiles',
+    '/Users/miguelfuentes/dotfiles',
   },
   {
     'Theresai',
