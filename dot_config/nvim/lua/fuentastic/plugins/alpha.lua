@@ -14,7 +14,7 @@ return {
 		-- use with the rest of sections for alpha.nvim, with throttling to avoid reading files on each redraw
 		local utils = require("possession.utils")
 
-		local if_nil = vim.F.if_nil
+		local if_nil = vim.nonnil
 		local fnamemodify = vim.fn.fnamemodify
 		local filereadable = vim.fn.filereadable
 
