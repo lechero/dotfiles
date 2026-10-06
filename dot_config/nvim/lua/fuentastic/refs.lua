@@ -21,7 +21,7 @@ local function sources(file)
   local repo = vim.fs.root(file, '.git') or vim.fs.dirname(file)
   if not sources_by_repo[repo] then
     local found = { repo = repo, jcr = {}, java = {}, tld = {} }
-    for _, depth in ipairs({ '', '/*', '/*/*' }) do
+    for _, depth in ipairs { '', '/*', '/*/*' } do
       local module = repo .. depth .. '/src/main'
       vim.list_extend(found.jcr, vim.fn.glob(module .. '/content/jcr_root', false, true))
       vim.list_extend(found.java, vim.fn.glob(module .. '/java', false, true))
@@ -84,7 +84,7 @@ function M.find_component(ref, ctx)
       local dir = root .. path
       if M.is_dir(dir) then
         local name = vim.fs.basename(dir)
-        for _, script in ipairs({ name .. '.html', name .. '.jsp', '.content.xml' }) do
+        for _, script in ipairs { name .. '.html', name .. '.jsp', '.content.xml' } do
           if M.is_file(dir .. '/' .. script) then
             return dir .. '/' .. script
           end
@@ -101,7 +101,7 @@ function M.find_node(path, ctx)
   local escaped = path:gsub('/([%l]+):', '/_%1_'):gsub('/$', '')
   for _, root in ipairs(ctx.jcr) do
     local base = root .. escaped
-    for _, candidate in ipairs({ base .. '/.content.xml', base .. '.xml', base }) do
+    for _, candidate in ipairs { base .. '/.content.xml', base .. '.xml', base } do
       if M.is_file(candidate) then
         return candidate
       end
@@ -121,8 +121,8 @@ function M.find_clientlib(category, ctx)
     local grep = vim.system({ 'git', 'grep', '-l', 'cq:ClientLibraryFolder', '--', '*.content.xml' }, { cwd = ctx.repo, text = true }):wait()
     for _, relative in ipairs(vim.split(grep.stdout or '', '\n', { trimempty = true })) do
       local file = ctx.repo .. '/' .. relative
-      local categories = table.concat(vim.fn.readfile(file), '\n'):match('%scategories="%[?([^"%]]*)')
-      for name in (categories or ''):gmatch('[^,%s]+') do
+      local categories = table.concat(vim.fn.readfile(file), '\n'):match '%scategories="%[?([^"%]]*)'
+      for name in (categories or ''):gmatch '[^,%s]+' do
         index[name] = index[name] or file
       end
     end
@@ -135,7 +135,7 @@ end
 -- values of `categories='a'`, `categories=['a', 'b']`, `extraClientlibs="[a,b]"` and the like.
 function M.scan_categories(found, line, pattern, ctx)
   for start, list in line:gmatch(pattern) do
-    for offset, name in list:gmatch('()([%w_][%w_.%-]*)') do
+    for offset, name in list:gmatch '()([%w_][%w_.%-]*)' do
       table.insert(found, {
         s = start + offset - 1,
         e = start + offset + #name - 2,
@@ -193,14 +193,14 @@ function M.goto_reference(references)
   local file = vim.api.nvim_buf_get_name(0)
   local found = references(vim.api.nvim_get_current_line(), M.context(file))
   if #found == 0 then
-    vim.cmd('normal! gd')
+    vim.cmd 'normal! gd'
     return
   end
 
   table.sort(found, function(x, y)
     return x.s < y.s
   end)
-  local col = vim.fn.col('.')
+  local col = vim.fn.col '.'
   local ref = found[1]
   for _, r in ipairs(found) do
     if col >= r.s and col <= r.e then
@@ -213,7 +213,7 @@ function M.goto_reference(references)
     vim.notify('Not in this repo: ' .. ref.label, vim.log.levels.WARN)
     return
   end
-  vim.cmd("normal! m'")
+  vim.cmd "normal! m'"
   if path ~= file then
     vim.cmd.edit(vim.fn.fnameescape(path))
   end

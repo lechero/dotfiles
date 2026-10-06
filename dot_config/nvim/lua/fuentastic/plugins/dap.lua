@@ -60,14 +60,14 @@ return {
     {
       '<leader>B',
       function()
-        require('dap').set_breakpoint(vim.fn.input('Breakpoint condition: '))
+        require('dap').set_breakpoint(vim.fn.input 'Breakpoint condition: ')
       end,
       desc = 'Debug: Conditional [B]reakpoint',
     },
   },
   config = function()
-    local dap = require('dap')
-    local dapui = require('dapui')
+    local dap = require 'dap'
+    local dapui = require 'dapui'
 
     dapui.setup()
 

@@ -14,10 +14,10 @@ local function setup_lsp_keymaps(event)
   end)
   if not own_gd then
     map('gd', function()
-      if #vim.lsp.get_clients({ bufnr = 0, method = vim.lsp.protocol.Methods.textDocument_definition }) > 0 then
+      if #vim.lsp.get_clients { bufnr = 0, method = vim.lsp.protocol.Methods.textDocument_definition } > 0 then
         require('telescope.builtin').lsp_definitions()
       else
-        vim.cmd('normal! gd')
+        vim.cmd 'normal! gd'
       end
     end, '[G]oto [D]efinition')
   end
@@ -49,7 +49,7 @@ local function setup_lsp_keymaps(event)
       group = vim.api.nvim_create_augroup('kickstart-lsp-detach', { clear = true }),
       callback = function(event2)
         vim.lsp.buf.clear_references()
-        vim.api.nvim_clear_autocmds({ group = 'kickstart-lsp-highlight', buffer = event2.buf })
+        vim.api.nvim_clear_autocmds { group = 'kickstart-lsp-highlight', buffer = event2.buf }
       end,
     })
   end
@@ -60,7 +60,7 @@ local function setup_lsp_keymaps(event)
 
   -- Not gated on the capability: jdtls only registers inlay hints after attaching.
   map('<leader>th', function()
-    vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled({ bufnr = event.buf }))
+    vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf })
   end, '[T]oggle Inlay [H]ints')
 end
 
@@ -77,7 +77,7 @@ local function setup_lsp()
   -- (lspconfig's vue_ls on_init), which needs the Vue plugin that vue-language-server ships.
   local vue_plugin = {
     name = '@vue/typescript-plugin',
-    location = vim.fn.stdpath('data') .. '/mason/packages/vue-language-server/node_modules/@vue/language-server',
+    location = vim.fn.stdpath 'data' .. '/mason/packages/vue-language-server/node_modules/@vue/language-server',
     languages = { 'vue' },
     configNamespace = 'typescript',
   }
@@ -93,7 +93,7 @@ local function setup_lsp()
     for _, file in ipairs(vim.list_extend({ root .. '/package.json' }, vim.fn.glob(root .. '/*/package.json', false, true))) do
       local ok, package = pcall(vim.json.decode, table.concat(vim.fn.readfile(file), '\n'))
       for _, script in pairs(ok and type(package) == 'table' and package.scripts or {}) do
-        for flag in script:gmatch('eslint%s.-%-%-flag[%s=]+([%w_]+)') do
+        for flag in script:gmatch 'eslint%s.-%-%-flag[%s=]+([%w_]+)' do
           if not vim.list_contains(flags, flag) then
             table.insert(flags, flag)
           end
@@ -178,14 +178,14 @@ local function setup_lsp()
     'checkstyle', -- run by nvim-lint (plugins/lint.lua)
   })
 
-  require('mason-tool-installer').setup({ ensure_installed = ensure_installed })
+  require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
-  require('mason-lspconfig').setup({
+  require('mason-lspconfig').setup {
     ensure_installed = vim.tbl_keys(servers),
-  })
+  }
 
   local has_new_lsp_api = vim.lsp and vim.lsp.config and vim.lsp.enable
-  local lspconfig = has_new_lsp_api and nil or require('lspconfig')
+  local lspconfig = has_new_lsp_api and nil or require 'lspconfig'
 
   for server_name, server in pairs(servers) do
     server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})

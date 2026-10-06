@@ -3,19 +3,19 @@ local root_markers = {
   { 'pom.xml', 'build.gradle', 'build.gradle.kts', 'build.xml' },
 }
 
-local mason = vim.fn.stdpath('data') .. '/mason'
+local mason = vim.fn.stdpath 'data' .. '/mason'
 
 local function jdk_major(home)
   local file = io.open(home .. '/release')
   if not file then
     return nil
   end
-  local version = file:read('*a'):match('JAVA_VERSION="([^"]+)"')
+  local version = file:read('*a'):match 'JAVA_VERSION="([^"]+)"'
   file:close()
   if not version then
     return nil
   end
-  local first, second = version:match('^(%d+)%.?(%d*)')
+  local first, second = version:match '^(%d+)%.?(%d*)'
   if first == '1' then
     return tonumber(second)
   end
@@ -114,14 +114,14 @@ end
 --   gradle: spotless { java { eclipse().configFile('config/style.xml') } }
 --   maven:  <eclipse><file>${project.basedir}/style.xml</file></eclipse>
 local function spotless_profile(root)
-  for _, name in ipairs({ 'build.gradle', 'build.gradle.kts', 'pom.xml' }) do
+  for _, name in ipairs { 'build.gradle', 'build.gradle.kts', 'pom.xml' } do
     local file = io.open(root .. '/' .. name)
     if file then
-      local build = file:read('*a')
+      local build = file:read '*a'
       file:close()
-      local path = build:match('eclipse%b()%s*%.%s*configFile[^\'"\n]*[\'"]([^\'"\n]+)')
-      local maven = build:match('<eclipse>(.-)</eclipse>')
-      path = path or (maven and maven:match('<file>%s*(.-)%s*</file>'))
+      local path = build:match 'eclipse%b()%s*%.%s*configFile[^\'"\n]*[\'"]([^\'"\n]+)'
+      local maven = build:match '<eclipse>(.-)</eclipse>'
+      path = path or (maven and maven:match '<file>%s*(.-)%s*</file>')
       if path then
         -- relative to the project: drop a leading ${project.basedir}/, $rootDir/ and the like
         path = path:gsub('^%$%b{}/', ''):gsub('^%$%w+/', '')
@@ -133,7 +133,7 @@ local function spotless_profile(root)
 end
 
 local function on_attach(_, bufnr)
-  local jdtls = require('jdtls')
+  local jdtls = require 'jdtls'
   local function map(mode, keys, func, desc)
     vim.keymap.set(mode, keys, func, { buffer = bufnr, desc = 'Java: ' .. desc })
   end
@@ -171,14 +171,14 @@ local function attach(args)
   end
 
   local root = vim.fs.root(args.buf, root_markers) or vim.fs.dirname(name)
-  local workspace = vim.fn.stdpath('cache') .. '/jdtls/' .. vim.fs.basename(root) .. '-' .. vim.fn.sha256(root):sub(1, 8)
+  local workspace = vim.fn.stdpath 'cache' .. '/jdtls/' .. vim.fs.basename(root) .. '-' .. vim.fn.sha256(root):sub(1, 8)
 
   -- Maven plugin goals not to run on jdtls's builds (frontend-maven-plugin's npm runs). m2e reads this
   -- file from the workspace at startup; java.configuration.maven.lifecycleMappings only takes effect
   -- after the first import has built the project, and that build is where an npm test run hangs.
   local m2e = workspace .. '/.metadata/.plugins/org.eclipse.m2e.core'
   vim.fn.mkdir(m2e, 'p')
-  vim.uv.fs_copyfile(vim.fn.stdpath('config') .. '/jdtls/lifecycle-mapping-metadata.xml', m2e .. '/lifecycle-mapping-metadata.xml')
+  vim.uv.fs_copyfile(vim.fn.stdpath 'config' .. '/jdtls/lifecycle-mapping-metadata.xml', m2e .. '/lifecycle-mapping-metadata.xml')
 
   local capabilities = vim.lsp.protocol.make_client_capabilities()
   capabilities = vim.tbl_deep_extend('force', capabilities, require('blink.cmp').get_lsp_capabilities())
@@ -252,12 +252,12 @@ return {
   config = function()
     -- Registers the `java` adapter, so <F5> offers every main class in the project. Only the
     -- first call counts, and nvim-jdtls makes its own (without these options) on LspAttach.
-    require('jdtls').setup_dap({ hotcodereplace = 'auto' })
+    require('jdtls').setup_dap { hotcodereplace = 'auto' }
 
     -- :JdtRestart starts the new client with vim.lsp.start_client(), which Nvim 0.13 removes.
     -- `:lsp restart` does the same: stops jdtls, starts it with its config, reattaches its buffers.
     require('jdtls.setup').restart = function()
-      vim.cmd('lsp restart jdtls')
+      vim.cmd 'lsp restart jdtls'
     end
 
     vim.api.nvim_create_autocmd('FileType', {

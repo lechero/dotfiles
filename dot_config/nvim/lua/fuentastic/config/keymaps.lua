@@ -34,7 +34,7 @@ local function get_buffer_path_info(buf)
 end
 
 local function copy_with_pbcopy(payload, success_message)
-  if vim.fn.executable('pbcopy') ~= 1 then
+  if vim.fn.executable 'pbcopy' ~= 1 then
     vim.notify('pbcopy not found on PATH', vim.log.levels.ERROR)
     return
   end
@@ -55,7 +55,7 @@ map('n', ';ts', ':tab split<CR>', { silent = true })
 map('n', ';tc', ':tabclose<CR>', { silent = true })
 
 map('n', '<leader>fp', function()
-  local path = vim.fn.expand('%:p')
+  local path = vim.fn.expand '%:p'
   if path == '' then
     vim.notify('No file name for current buffer', vim.log.levels.WARN)
     return

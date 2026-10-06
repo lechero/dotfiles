@@ -6,10 +6,10 @@ vim.g.maplocalleader = ' '
 
 vim.g.have_nerd_font = true
 
-require('fuentastic.config.options')
-require('fuentastic.config.keymaps')
-require('fuentastic.config.autocmds')
-require('fuentastic.config.winmove')
-require('fuentastic.config.gitlab')
-require('fuentastic.config.aem')
-require('fuentastic.config.lazy')
+require 'fuentastic.config.options'
+require 'fuentastic.config.keymaps'
+require 'fuentastic.config.autocmds'
+require 'fuentastic.config.winmove'
+require 'fuentastic.config.gitlab'
+require 'fuentastic.config.aem'
+require 'fuentastic.config.lazy'

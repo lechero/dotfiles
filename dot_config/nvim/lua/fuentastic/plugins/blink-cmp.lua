@@ -5,7 +5,7 @@
 -- Tab selects the next item only after a word, so it still indents at the start of a line.
 local function has_words_before()
   local line, col = unpack(vim.api.nvim_win_get_cursor(0))
-  return col ~= 0 and vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match('%s') == nil
+  return col ~= 0 and vim.api.nvim_buf_get_lines(0, line - 1, line, true)[1]:sub(col, col):match '%s' == nil
 end
 
 return {
@@ -22,7 +22,7 @@ return {
       ['<CR>'] = { 'accept', 'fallback' },
       ['<Tab>'] = {
         function() -- a Copilot inline suggestion first
-          local suggestion = require('copilot.suggestion')
+          local suggestion = require 'copilot.suggestion'
           if suggestion.is_visible() then
             suggestion.accept()
             return true

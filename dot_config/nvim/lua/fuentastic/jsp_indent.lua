@@ -21,7 +21,7 @@ local html_elements = { element = true, script_element = true, style_element = t
 
 -- Elements without an end tag.
 local void = {}
-for _, name in ipairs({ 'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr' }) do
+for _, name in ipairs { 'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr' } do
   void[name] = true
 end
 
@@ -46,14 +46,14 @@ local function java_indent(parser, tag, row, col, text)
   local tag_row = tag:start()
   local _, code_col = tag:named_child(0):start()
   local opener = vim.fn.getline(tag_row + 1)
-  local base = vim.fn.indent(tag_row + 1) + (opener:sub(code_col + 1):match('^%s*$') and vim.fn.shiftwidth() or 0)
+  local base = vim.fn.indent(tag_row + 1) + (opener:sub(code_col + 1):match '^%s*$' and vim.fn.shiftwidth() or 0)
 
   local java = root(parser, 'java', row, col)
   local node = java and java:descendant_for_range(row, col, row, col)
   if not node then
     return base -- before the scriptlet's first statement or after its last
   end
-  if node:type():match('comment') or node:type() == 'string_fragment' then
+  if node:type():match 'comment' or node:type() == 'string_fragment' then
     return -1 -- inside a /* */ comment or a text block
   end
 
@@ -76,7 +76,7 @@ local function java_indent(parser, tag, row, col, text)
   end
   -- A statement continued from an earlier line (a chained call, a long condition, `else` on its
   -- own line) keeps the indent it was given.
-  if text:match('%S') and statement and statement:start() < row and text:sub(col + 1, col + 1) ~= '}' then
+  if text:match '%S' and statement and statement:start() < row and text:sub(col + 1, col + 1) ~= '}' then
     return -1
   end
   return base + depth * vim.fn.shiftwidth()
@@ -89,7 +89,7 @@ local function tag_block(parser, row, col)
   local node = java and java:descendant_for_range(row, col, row, col)
   while node do
     if java_blocks[node:type()] and node:start() < row and node:end_() > row then
-      if vim.fn.getline(node:start() + 1):match('^%s*<%%') then
+      if vim.fn.getline(node:start() + 1):match '^%s*<%%' then
         return node
       end
     end
@@ -132,15 +132,15 @@ end
 -- (`if (x) {`, `<% if (x) { %>`), an HTML element (`<ul>`).
 local function opens(parser, lnum)
   local text = vim.fn.getline(lnum):gsub('%s+$', '')
-  if text:match('<%%!?$') or text:match('{%s*%%>$') then
+  if text:match '<%%!?$' or text:match '{%s*%%>$' then
     return true
   end
-  if text:match('{$') then
+  if text:match '{$' then
     local node = parser:trees()[1]:root():descendant_for_range(lnum - 1, #text - 1, lnum - 1, #text - 1)
     return node:type() ~= 'content' -- Java, not CSS
   end
-  local tag = text:match('<(%a[%w:%-]*)[^<>]*>$')
-  return tag ~= nil and not text:match('/>$') and not void[tag:lower()] and not text:find('</' .. tag .. '>', 1, true)
+  local tag = text:match '<(%a[%w:%-]*)[^<>]*>$'
+  return tag ~= nil and not text:match '/>$' and not void[tag:lower()] and not text:find('</' .. tag .. '>', 1, true)
 end
 
 -- The indent for the line at `row`, from what's at `col`, its first non-blank (0 when it's blank).
@@ -182,8 +182,8 @@ function M.indentexpr()
   last = { buf = buf, lnum = lnum, tick = tick }
 
   local text = vim.fn.getline(lnum)
-  local blank = not text:match('%S')
-  local indent = indent_at(parser, lnum - 1, blank and 0 or #text:match('^%s*'), text)
+  local blank = not text:match '%S'
+  local indent = indent_at(parser, lnum - 1, blank and 0 or #text:match '^%s*', text)
   -- A blank line, as `o` makes: the trees don't know about what the previous line has just opened
   -- while nothing closes it yet.
   local prev = vim.fn.prevnonblank(lnum - 1)

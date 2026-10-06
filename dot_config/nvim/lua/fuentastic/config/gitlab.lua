@@ -1,6 +1,6 @@
 -- GitLab from nvim, through glab (lua/fuentastic/gitlab.lua, doc/gitlab.md).
 local function gitlab()
-  return require('fuentastic.gitlab')
+  return require 'fuentastic.gitlab'
 end
 
 vim.api.nvim_create_user_command('GitlabStatus', function()

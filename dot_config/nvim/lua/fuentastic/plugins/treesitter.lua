@@ -50,7 +50,7 @@ return {
       pattern = 'TSUpdate',
       callback = function()
         require('nvim-treesitter.parsers').jsp = {
-          install_info = { path = vim.fn.stdpath('config') .. '/tree-sitter-jsp' },
+          install_info = { path = vim.fn.stdpath 'config' .. '/tree-sitter-jsp' },
         }
       end,
     })

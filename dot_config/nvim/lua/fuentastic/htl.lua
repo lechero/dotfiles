@@ -2,17 +2,17 @@
 -- cursor line references: a resourceType's component, a data-sly-use script or Java class, a
 -- data-sly-include, the template a data-sly-call renders, or a clientlib category. Resolving is
 -- shared with JSP's and .content.xml's gd (lua/fuentastic/refs.lua).
-local refs = require('fuentastic.refs')
+local refs = require 'fuentastic.refs'
 
 local M = {}
 
 -- data-sly-use and data-sly-include take a plain value or an expression: "${'path' @ opt=1}".
 local function literal(value)
-  return value:match("^%${%s*'([^']+)'") or value:match('^%${%s*"([^"]+)"') or value
+  return value:match "^%${%s*'([^']+)'" or value:match '^%${%s*"([^"]+)"' or value
 end
 
 local function find_use(ref, ctx)
-  if ref:match('%.html$') or ref:match('%.js$') then
+  if ref:match '%.html$' or ref:match '%.js$' then
     return refs.find_script(ref, ctx)
   end
   return refs.find_class(ref, ctx) or refs.find_script(ref, ctx)
@@ -53,7 +53,7 @@ local function references(line, ctx)
   -- ${clientlib.css @ categories='site.base'}: the clientlib, not AEM's clientlib template
   refs.scan_categories(found, line, '%f[%w]categories%s*=%s*%[?()([^%]}]+)', ctx)
   return vim.tbl_filter(function(ref)
-    return not (ref.label:match('^[%w_]+%.[%w_]+$') and line:sub(ref.s):match('^[^}]-categories%s*='))
+    return not (ref.label:match '^[%w_]+%.[%w_]+$' and line:sub(ref.s):match '^[^}]-categories%s*=')
   end, found)
 end
 

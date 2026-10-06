@@ -20,7 +20,7 @@ end
 -- Its own config/system dirs: IntelliJ allows one instance per dir, so the formatter doesn't
 -- collide with an open IDE.
 local function idea_properties()
-  local dir = vim.fn.stdpath('cache') .. '/intellij-format'
+  local dir = vim.fn.stdpath 'cache' .. '/intellij-format'
   local file = dir .. '/idea.properties'
   if not vim.uv.fs_stat(file) then
     vim.fn.mkdir(dir, 'p')
@@ -42,13 +42,13 @@ return {
     {
       '<leader>cf',
       function()
-        local conform = require('conform')
+        local conform = require 'conform'
         -- IntelliJ needs a few seconds to boot, so say something while it runs.
         local slow = vim.iter((conform.list_formatters_to_run())):any(function(formatter)
           return formatter.name == 'intellij'
         end)
         if slow then
-          vim.notify('Formatting with IntelliJ...')
+          vim.notify 'Formatting with IntelliJ...'
         end
         conform.format({ async = true, lsp_format = 'fallback' }, function(err)
           if slow then
