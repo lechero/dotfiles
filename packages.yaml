@@ -1,0 +1,169 @@
+# Everything Homebrew installs for this setup, each with a priority. dotui and
+# the Taskfile read this file: `task deps:install PRIO=2` installs priorities
+# 1 and 2.
+#
+#   1  core       the dotfiles in this repo need it
+#   2  daily      used regularly, or Neovim, fish or Rancher depend on it
+#   3  sometimes  used in the last year, by a project, or by another package
+#   4  rarely     not used in over a year: a candidate to remove
+#
+# Ranked in October 2026 from fish history, when apps were last opened, and
+# what this repo and the projects in ~/projects call.
+#
+# Fields: name, prio, note, cask: true for casks, and app: for casks that
+# may be installed without Homebrew. Packages from other taps use their
+# tap-qualified name, such as charmbracelet/tap/crush; dotui taps those first.
+
+
+packages:
+  # 1 core
+  - {name: bat, prio: 1, note: "Previews in fzf, and the `c` abbreviation"}
+  - {name: chezmoi, prio: 1, note: "Applies this repo"}
+  - {name: cmake, prio: 1, note: "update-neovim builds Neovim with it"}
+  - {name: eza, prio: 1, note: "The `l` listing"}
+  - {name: fd, prio: 1, note: "File search for fzf.fish, `vv` and Telescope"}
+  - {name: fish, prio: 1, note: "Shell"}
+  - {name: font-fira-code, cask: true, prio: 1, note: "kitty's font"}
+  - {name: fzf, prio: 1, note: "Fuzzy finder in fish, zsh and Neovim"}
+  - {name: gettext, prio: 1, note: "update-neovim builds Neovim with it"}
+  - {name: go, prio: 1, note: "Builds dotui"}
+  - {name: go-task, prio: 1, note: "Runs this repo's Taskfile, and your projects'"}
+  - {name: jump, prio: 1, note: "`j` in fish"}
+  - {name: kitty, cask: true, app: kitty.app, prio: 1, note: "Terminal; installed without Homebrew here"}
+  - {name: ninja, prio: 1, note: "update-neovim builds Neovim with it"}
+  - {name: ripgrep, prio: 1, note: "Search: `a`, `g`, `r` and Telescope"}
+  - {name: starship, prio: 1, note: "zsh's prompt, and fish's other prompt"}
+  - {name: tmux, prio: 1, note: "Terminal multiplexer that kitty starts"}
+  - {name: zoxide, prio: 1, note: "`z` and `zi` in fish and zsh"}
+
+  # 2 daily
+  - {name: android-studio, cask: true, prio: 2, note: "fish's JAVA_HOME points at its JDK"}
+  - {name: awscli, prio: 2, note: "AWS CLI"}
+  - {name: claude-code, cask: true, prio: 2, note: "Claude Code"}
+  - {name: eslint, prio: 2, note: "Neovim lints JavaScript with it"}
+  - {name: ffmpeg, prio: 2, note: "yt-dlp merges video and audio with it"}
+  - {name: gcloud-cli, cask: true, prio: 2, note: "Google Cloud CLI"}
+  - {name: gh, prio: 2, note: "GitHub CLI"}
+  - {name: glab, prio: 2, note: "GitLab CLI; Neovim's GitLab integration uses it"}
+  - {name: jless, prio: 2, note: "JSON pager, `jl`"}
+  - {name: jq, prio: 2, note: "JSON processor"}
+  - {name: lazydocker, prio: 2, note: "Docker TUI, `lz`"}
+  - {name: lazygit, prio: 2, note: "Git TUI, `lg` and Neovim"}
+  - {name: luarocks, prio: 2, note: "Lua packages for Neovim plugins"}
+  - {name: maven, prio: 2, note: "Java builds, also from Neovim"}
+  - {name: openjdk, prio: 2, note: "Maven runs on it"}
+  - {name: prettier, prio: 2, note: "Neovim formats with it"}
+  - {name: rancher, cask: true, prio: 2, note: "docker and kubectl, through ~/.rd/bin"}
+  - {name: tree, prio: 2, note: "Directory trees"}
+  - {name: yt-dlp, prio: 2, note: "Video downloader"}
+
+  # 3 sometimes
+  - {name: act, prio: 3, note: "Runs GitHub Actions locally; projects use it"}
+  - {name: bottom, prio: 3, note: "System monitor, `btm`"}
+  - {name: ca-certificates, prio: 3, note: "Other packages need it"}
+  - {name: cairo, prio: 3, note: "Library other packages need"}
+  - {name: calibre, cask: true, prio: 3, note: "E-book manager"}
+  - {name: changie, prio: 3, note: "Changelogs; projects use it"}
+  - {name: charmbracelet/tap/crush, prio: 3, note: "AI coding assistant"}
+  - {name: charmbracelet/tap/mods, prio: 3, note: "AI on the command line"}
+  - {name: cloudflared, prio: 3, note: "Cloudflare tunnels; projects use it"}
+  - {name: cocoapods, prio: 3, note: "iOS dependencies; projects use it"}
+  - {name: coreutils, prio: 3, note: "GNU core utilities"}
+  - {name: curl, prio: 3, note: "Other packages need it"}
+  - {name: devpod, cask: true, prio: 3, note: "Dev containers"}
+  - {name: dhth/tap/act3, prio: 3, note: "GitHub Actions run summaries"}
+  - {name: difftastic, prio: 3, note: "Syntax-aware diffs, `difft`"}
+  - {name: dust, prio: 3, note: "Disk usage"}
+  - {name: gdal, prio: 3, note: "Geospatial data; projects use it"}
+  - {name: gemini-cli, prio: 3, note: "Gemini CLI"}
+  - {name: giflib, prio: 3, note: "Library other packages need"}
+  - {name: git-lfs, prio: 3, note: "Git large files; other packages need it"}
+  - {name: glow, prio: 3, note: "Markdown in the terminal"}
+  - {name: golangci-lint, prio: 3, note: "Go linters; projects use it"}
+  - {name: gromgit/fuse/sshfs-mac, prio: 3, note: "Mount remote folders over SSH"}
+  - {name: gum, prio: 3, note: "Prompts for shell scripts; projects use it"}
+  - {name: herdr, prio: 3, note: "Agent multiplexer"}
+  - {name: jiratui, prio: 3, note: "Jira TUI"}
+  - {name: k6, prio: 3, note: "Load testing; projects use it"}
+  - {name: kustomize, prio: 3, note: "Kubernetes manifests; projects use it"}
+  - {name: libpng, prio: 3, note: "Library other packages need"}
+  - {name: macfuse, cask: true, prio: 3, note: "sshfs needs it"}
+  - {name: mkcert, prio: 3, note: "Local HTTPS certificates; projects use it"}
+  - {name: mysql, prio: 3, note: "MySQL server"}
+  - {name: mysql-client, prio: 3, note: "MySQL client"}
+  - {name: ngrok, cask: true, prio: 3, note: "Tunnels; projects use it"}
+  - {name: pango, prio: 3, note: "Library other packages need"}
+  - {name: pkgconf, prio: 3, note: "Build tool other packages need"}
+  - {name: podman, prio: 3, note: "Containers"}
+  - {name: poppler, prio: 3, note: "PDF library other packages need"}
+  - {name: python@3.12, prio: 3, note: "Other packages need it"}
+  - {name: rabbitmq, prio: 3, note: "Message broker; projects use it"}
+  - {name: restic, prio: 3, note: "Backups"}
+  - {name: shc, prio: 3, note: "Shell script compiler"}
+  - {name: sqlite, prio: 3, note: "Library other packages need"}
+  - {name: tre, prio: 3, note: "Fuzzy grep, `agrep`"}
+  - {name: watch, prio: 3, note: "Repeats a command"}
+  - {name: wget, prio: 3, note: "Downloads"}
+  - {name: yq, prio: 3, note: "YAML processor; projects use it"}
+
+  # 4 rarely
+  - {name: 1password-cli, cask: true, prio: 4, note: "1Password CLI, `op`"}
+  - {name: actionlint, prio: 4, note: "Lints GitHub Actions workflows"}
+  - {name: bandwhich, prio: 4, note: "Bandwidth by process"}
+  - {name: bash-completion, prio: 4, note: "Completions for bash"}
+  - {name: block-goose, cask: true, prio: 4, note: "Goose desktop app"}
+  - {name: browsh-org/browsh/browsh, prio: 4, note: "Browser in the terminal"}
+  - {name: bruno, cask: true, prio: 4, note: "API client"}
+  - {name: chromium, cask: true, prio: 4, note: "Browser"}
+  - {name: charmbracelet/tap/wishlist, prio: 4, note: "SSH directory"}
+  - {name: circumflex, prio: 4, note: "Hacker News, `clx`"}
+  - {name: csvkit, prio: 4, note: "CSV tools"}
+  - {name: dotenvx/brew/dotenvx, prio: 4, note: "Encrypted .env files"}
+  - {name: drawio, cask: true, prio: 4, note: "Diagrams"}
+  - {name: duf, prio: 4, note: "Disk free"}
+  - {name: exiftool, prio: 4, note: "Image metadata"}
+  - {name: ffmpegthumbnailer, prio: 4, note: "Video thumbnails for yazi"}
+  - {name: fx, prio: 4, note: "JSON viewer"}
+  - {name: git-xet, prio: 4, note: "Git LFS over Xet"}
+  - {name: gitbutler, cask: true, prio: 4, note: "Git client"}
+  - {name: gnu-sed, prio: 4, note: "GNU sed, `gsed`"}
+  - {name: gping, prio: 4, note: "Ping with a graph"}
+  - {name: hashicorp/tap/terraform, prio: 4, note: "Terraform"}
+  - {name: hf, prio: 4, note: "Hugging Face CLI"}
+  - {name: highlight, prio: 4, note: "Syntax highlighting for previews"}
+  - {name: httpie, prio: 4, note: "HTTP client"}
+  - {name: hurl, prio: 4, note: "HTTP requests from files"}
+  - {name: idoavrah/homebrew/tftui, prio: 4, note: "Terraform TUI"}
+  - {name: imagemagick, prio: 4, note: "Images"}
+  - {name: jorgerojas26/lazysql/lazysql, prio: 4, note: "Database TUI, `lsq`"}
+  - {name: jpeg, prio: 4, note: "JPEG library"}
+  - {name: jqp, prio: 4, note: "jq playground"}
+  - {name: kdash-rs/kdash/kdash, prio: 4, note: "Kubernetes dashboard"}
+  - {name: konradsz/igrep/igrep, prio: 4, note: "Interactive grep, `ig`"}
+  - {name: librsvg, prio: 4, note: "SVG library"}
+  - {name: media-info, prio: 4, note: "Audio and video metadata"}
+  - {name: ncdu, prio: 4, note: "Disk usage"}
+  - {name: newsboat, prio: 4, note: "RSS reader"}
+  - {name: omnisharp/omnisharp-roslyn/omnisharp, prio: 4, note: "C# language server"}
+  - {name: one2nc/cloudlens/cloudlens, prio: 4, note: "AWS and GCP TUI"}
+  - {name: pgvector, prio: 4, note: "Postgres extension; no Postgres installed"}
+  - {name: php, prio: 4, note: "php-cs-fixer runs on it"}
+  - {name: php-cs-fixer, prio: 4, note: "PHP formatter"}
+  - {name: portaudio, prio: 4, note: "Audio library"}
+  - {name: prettierd, prio: 4, note: "Prettier daemon; Neovim calls prettier"}
+  - {name: python@3.11, prio: 4, note: "Python 3.11"}
+  - {name: ranger, prio: 4, note: "File manager"}
+  - {name: rsync, prio: 4, note: "Newer rsync than macOS's"}
+  - {name: skaffold, prio: 4, note: "Kubernetes dev loop"}
+  - {name: skim, cask: true, prio: 4, note: "PDF reader"}
+  - {name: skopeo, prio: 4, note: "Container image copying"}
+  - {name: stow, prio: 4, note: "Symlink manager; chezmoi replaced it"}
+  - {name: temurin@21, cask: true, prio: 4, note: "JDK 21; Java comes from SDKMAN"}
+  - {name: thefuck, prio: 4, note: "Fixes mistyped commands; fish no longer loads it"}
+  - {name: tiger-vnc, prio: 4, note: "VNC viewer"}
+  - {name: tokei, prio: 4, note: "Counts lines of code"}
+  - {name: transmission-cli, prio: 4, note: "BitTorrent"}
+  - {name: w3m, prio: 4, note: "Text web browser"}
+  - {name: yazi, prio: 4, note: "File manager"}
+  - {name: zellij, prio: 4, note: "Terminal multiplexer"}
+  - {name: zulu@17, cask: true, prio: 4, note: "JDK 17; Java comes from SDKMAN"}
