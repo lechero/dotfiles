@@ -1,3 +1,3 @@
 function wera --description 'Wera, in kitty'
-    kitten icat ~/.dotfiles/images/wera.png
+    kitten icat ~/.local/share/images/wera.png
 end
