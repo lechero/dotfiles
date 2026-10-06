@@ -21,7 +21,8 @@ local function setup_lsp_keymaps(event)
       end
     end, '[G]oto [D]efinition')
   end
-  map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
+  -- grr, not gr: Neovim's own gr* keys (grn, gra, gri...) would make gr wait for which-key's timeout.
+  map('grr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
   map('gI', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
   map('<leader>D', require('telescope.builtin').lsp_type_definitions, 'Type [D]efinition')
   map('<leader>ds', require('telescope.builtin').lsp_document_symbols, '[D]ocument [S]ymbols')
