@@ -11,7 +11,7 @@ scripts
 state
 packages.yaml
 dotui
-packages.yaml
+Taskfile.yml
 
 # Neovim
 **/autoload/
