@@ -74,4 +74,4 @@ Neither formats: AEM's XML and OSGi configs stay as written.
 | ESLint shows nothing for a file | `npx eslint <file>` in the project: it may be ignored there too |
 | "Unable to find ESLint library" | `npm install` in the project |
 | No Stylelint or html-validate diagnostics | `npm install` (they're the project's own); then save the file |
-| `:checkhealth vim.lsp` lists eslint but nothing shows | `:LspLog`: the project's config may fail to load |
+| `:checkhealth vim.lsp` lists eslint but nothing shows | The LSP log, at the "Log path" `:checkhealth vim.lsp` shows (`~/.local/state/nvim/logs/lsp.log`): the project's config may fail to load |

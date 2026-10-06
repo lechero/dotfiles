@@ -20,7 +20,7 @@ dropped Vue 2. The config lives in:
 - `tree-sitter` CLI and a C compiler, to build the treesitter parsers.
 
 Mason installs vue-language-server on first start, but `ts_ls` only loads the Vue plugin when it
-starts. So after that very first install run `:LspRestart` once (or restart nvim).
+starts. So after that very first install run `:lsp restart` once (or restart nvim).
 
 ## Which TypeScript is used
 
@@ -44,8 +44,8 @@ semicolons and double quotes on every save.
 
 | Symptom | Try |
 | --- | --- |
-| Template and styles work, but no types or hover in `<script>` | `:LspRestart` (vue-language-server installed after `ts_ls` started) |
+| Template and styles work, but no types or hover in `<script>` | `:lsp restart` (vue-language-server installed after `ts_ls` started) |
 | "Could not find `ts_ls`... required by `vue_ls`" | `ts_ls` isn't attached; check `:checkhealth vim.lsp` |
-| Errors about missing types everywhere | `npm install` in the project, then `:LspRestart` |
+| Errors about missing types everywhere | `npm install` in the project, then `:lsp restart` |
 | Formatting doesn't run, or prettier isn't used | `:ConformInfo` |
 | No highlighting inside `<script>` / `<style>` | `:checkhealth nvim-treesitter` |
