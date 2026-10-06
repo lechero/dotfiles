@@ -44,6 +44,7 @@ return {
       { '<leader>t', group = '[T]oggle / [T]est' },
       { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
       { '<leader>g', group = '[G]it and GitLab' },
+      { '<leader>o', group = '[O]pen' },
     },
   },
 }
