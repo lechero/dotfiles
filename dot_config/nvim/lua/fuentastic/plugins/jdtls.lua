@@ -110,7 +110,7 @@ local function bundles()
 end
 
 -- The Eclipse formatter profile the project's Spotless config enforces. jdtls runs the same
--- Eclipse formatter, so <leader>f (and format-on-save, see conform.lua) match `spotlessCheck`.
+-- Eclipse formatter, so <leader>cf (and format-on-save, see conform.lua) match `spotlessCheck`.
 --   gradle: spotless { java { eclipse().configFile('config/style.xml') } }
 --   maven:  <eclipse><file>${project.basedir}/style.xml</file></eclipse>
 local function spotless_profile(root)

@@ -95,7 +95,7 @@ still runs the tags and scriptlets inside it. On Java lines inside a scriptlet i
 
 ## Formatting
 
-There's no JSP formatter: saving doesn't format, and `<leader>f` finds nothing to run. `gg=G`
+There's no JSP formatter: saving doesn't format, and `<leader>cf` finds nothing to run. `gg=G`
 re-indents a page.
 
 ## Changing the grammar
