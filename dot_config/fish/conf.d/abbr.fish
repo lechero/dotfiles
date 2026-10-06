@@ -47,5 +47,5 @@ abbr -a pwc 'pwd | pbcopy'
 abbr -a qq exit
 abbr -a t tmuxifier
 abbr -a tt task
-abbr -a upv '~/.dotfiles/bash/update_neovim.sh'
+abbr -a upv update-neovim
 command -q nvim; and abbr -a vim nvim
