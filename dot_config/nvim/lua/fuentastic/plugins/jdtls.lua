@@ -254,6 +254,12 @@ return {
     -- first call counts, and nvim-jdtls makes its own (without these options) on LspAttach.
     require('jdtls').setup_dap({ hotcodereplace = 'auto' })
 
+    -- :JdtRestart starts the new client with vim.lsp.start_client(), which Nvim 0.13 removes.
+    -- `:lsp restart` does the same: stops jdtls, starts it with its config, reattaches its buffers.
+    require('jdtls.setup').restart = function()
+      vim.cmd('lsp restart jdtls')
+    end
+
     vim.api.nvim_create_autocmd('FileType', {
       group = vim.api.nvim_create_augroup('fuentastic-jdtls', { clear = true }),
       pattern = 'java',
