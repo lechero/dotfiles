@@ -51,3 +51,22 @@ The fish config in `dot_config/fish` adds these, each pinned to a release. `run_
 | [patrickf1/fzf.fish](https://github.com/PatrickF1/fzf.fish) | v11.0 | fzf searches on keys |
 | [jorgebucaran/nvm.fish](https://github.com/jorgebucaran/nvm.fish) | 2.2.17 | Node versions |
 | [reitzig/sdkman-for-fish](https://github.com/reitzig/sdkman-for-fish) | v2.1.0 | The `sdk` command in fish |
+
+## tmux dependencies
+
+The tmux config in `dot_config/tmux` installs these with [TPM](https://github.com/tmux-plugins/tpm). `run_onchange_after_install-tmux-plugins.sh.tmpl` clones TPM itself at commit `99469c4` and runs its installer whenever the plugin list in `tmux.conf` changes. TPM can't pin plugins to a commit, so the plugins follow their default branches.
+
+| Plugin | Purpose |
+| --- | --- |
+| [tmux-plugins/tmux-sensible](https://github.com/tmux-plugins/tmux-sensible) | Common defaults |
+| [tmux-plugins/tmux-logging](https://github.com/tmux-plugins/tmux-logging) | Save pane output |
+| [sainnhe/tmux-fzf](https://github.com/sainnhe/tmux-fzf) | fzf menus for sessions, windows and panes |
+| [nhdaly/tmux-better-mouse-mode](https://github.com/nhdaly/tmux-better-mouse-mode) | Mouse scrolling |
+| [abhinav/tmux-fastcopy](https://github.com/abhinav/tmux-fastcopy) | Copy text by hint |
+| [jaclu/tmux-menus](https://github.com/jaclu/tmux-menus) | Popup menus |
+| [tmux-plugins/tmux-yank](https://github.com/tmux-plugins/tmux-yank) | Copy to the system clipboard |
+| [jimeh/tmuxifier](https://github.com/jimeh/tmuxifier) | Session layouts |
+| [tmux-plugins/tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect) | Save and restore sessions |
+| [carlocab/tmux-nvr](https://github.com/carlocab/tmux-nvr) | One Neovim per session |
+| [omerxx/tmux-sessionx](https://github.com/omerxx/tmux-sessionx) | Session picker |
+| [catppuccin/tmux](https://github.com/catppuccin/tmux) | Theme |

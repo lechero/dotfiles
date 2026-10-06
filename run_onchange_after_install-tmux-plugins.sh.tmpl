@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Install the tmux plugins listed in ~/.config/tmux/tmux.conf with TPM, and
+# run again whenever that list changes:
+# plugins sha256 {{ regexFindAll "(?m)^set -g @plugin .*$" (include "dot_config/tmux/tmux.conf") -1 | join "\n" | sha256sum }}
+set -euo pipefail
+
+command -v tmux >/dev/null 2>&1 || exit 0
+
+plugins="${XDG_CONFIG_HOME:-$HOME/.config}/tmux/plugins"
+
+# The plugins are public repos, but TPM clones them as
+# https://git::@github.com/..., and git then tries to save that dummy login to
+# the macOS keychain, which can stop on a permission dialog. Turn credential
+# helpers off for these clones; an empty helper clears the list.
+export GIT_TERMINAL_PROMPT=0 GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=credential.helper GIT_CONFIG_VALUE_0=
+
+# The first run clones TPM itself at a known commit. After that, TPM is a
+# plugin like the others, updated with prefix + U.
+tpm_commit=99469c4a9b1ccf77fade25842dc7bafbc8ce9946
+if [ ! -d "$plugins/tpm" ]; then
+  git clone --quiet https://github.com/tmux-plugins/tpm "$plugins/tpm"
+  git -C "$plugins/tpm" -c advice.detachedHead=false checkout --quiet "$tpm_commit"
+fi
+
+# TPM asks the tmux server where plugins go, and a running server may still
+# have an older config loaded. Give it a private server of its own instead.
+TMUX_TMPDIR=$(mktemp -d)
+export TMUX_TMPDIR
+unset TMUX
+trap 'tmux kill-server 2>/dev/null || true; rm -rf "$TMUX_TMPDIR"' EXIT
+
+"$plugins/tpm/bin/install_plugins"

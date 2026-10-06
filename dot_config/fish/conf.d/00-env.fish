@@ -8,9 +8,9 @@
 fish_add_path --global --move \
     ~/.rd/bin \
     ~/Library/pnpm \
-    ~/.tmux/plugins/tmuxifier/bin \
+    ~/.config/tmux/plugins/tmuxifier/bin \
     ~/go/bin \
-    ~/.tmux/plugins/tmux-nvr/bin \
+    ~/.config/tmux/plugins/tmux-nvr/bin \
     /usr/local/bin \
     /usr/local/sbin \
     /opt/homebrew/bin \

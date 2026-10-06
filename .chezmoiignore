@@ -24,3 +24,6 @@ state
 .config/fish/fish_variables
 .config/fish/secrets.fish
 .config/fish/plugins
+
+# tmux: the plugins TPM installs
+.config/tmux/plugins
