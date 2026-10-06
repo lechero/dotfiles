@@ -42,7 +42,7 @@ return {
       { '<leader>s', group = '[S]earch' },
       { '<leader>w', group = '[W]orkspace' },
       { '<leader>t', group = '[T]oggle / [T]est' },
-      { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
+      { '<leader>a', group = '[A]I (Sidekick)', mode = { 'n', 'x' } },
       { '<leader>g', group = '[G]it and GitLab' },
       { '<leader>o', group = '[O]pen' },
     },
