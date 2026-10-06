@@ -36,7 +36,6 @@ abbr -a icat 'kitten icat'
 abbr -a jl jless
 abbr -a k kubectl
 abbr -a lg lazygit
-abbr -a lsq lazysql
 abbr -a lz lazydocker
 abbr -a mn mynav
 abbr -a ng 'npm install -g'
