@@ -17,6 +17,9 @@ state
 **/plugged/**/*
 **/yankring_history*.txt
 
+# This machine's own zsh and bash setup, loaded by .zshrc and .bashrc
+.config/shell/local.sh
+
 # Fish: per-machine state, local secrets, and the plugins fisher installs
 .config/fish/fish_variables
 .config/fish/secrets.fish

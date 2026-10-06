@@ -2,9 +2,11 @@
 # background prompt renders need the same PATH as the prompt you type in.
 
 # fish_add_path skips directories that don't exist, so one list fits every
-# machine. Earlier entries win. Homebrew and /usr/local stay ahead of
+# machine. Earlier entries win: Rancher Desktop's docker and kubectl over
+# Docker Desktop's in /usr/local/bin, and Homebrew and /usr/local over
 # ~/.local/bin, which also has a `claude` and an `spf`.
 fish_add_path --global --move \
+    ~/.rd/bin \
     ~/Library/pnpm \
     ~/.tmux/plugins/tmuxifier/bin \
     ~/go/bin \
