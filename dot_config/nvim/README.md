@@ -147,6 +147,12 @@ of the box; see [doc/jsp.md](doc/jsp.md) for what `gd` resolves and how the inde
 `gd` in an AEM component script opens the component, script, Java class or template the line
 references; see [doc/htl.md](doc/htl.md).
 
+### GitLab
+
+`.gitlab-ci.yml` and the files it includes are checked as you type (GitLab's CI schema,
+gitlab-ci-ls) and on GitLab with `<leader>gl`; `<leader>gs` shows the branch's merge request and
+pipeline. See [doc/gitlab.md](doc/gitlab.md).
+
 ### SonarQube
 
 Java and TypeScript files show SonarQube issues, checked against your SonarQube project's rules
