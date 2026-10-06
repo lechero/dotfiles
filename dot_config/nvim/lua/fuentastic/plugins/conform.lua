@@ -40,7 +40,7 @@ return {
   cmd = { 'ConformInfo' },
   keys = {
     {
-      '<leader>f',
+      '<leader>cf',
       function()
         local conform = require('conform')
         -- IntelliJ needs a few seconds to boot, so say something while it runs.
@@ -65,7 +65,7 @@ return {
     format_on_save = function(bufnr)
       -- java: only with the project's own Spotless profile, which is what CI checks (the first
       -- format after jdtls starts takes ~1s). Without one, jdtls falls back to Eclipse's built-in
-      -- profile (it splits `record Point(int x) {}` braces, for one): <leader>f only.
+      -- profile (it splits `record Point(int x) {}` braces, for one): <leader>cf only.
       if vim.bo[bufnr].filetype == 'java' then
         return spotless_profile(bufnr) and { timeout_ms = 3000, lsp_format = 'fallback' } or nil
       end
@@ -84,7 +84,7 @@ return {
     end,
     formatters_by_ft = {
       lua = { 'stylua' },
-      java = { 'intellij' }, -- when it doesn't apply, <leader>f falls back to jdtls
+      java = { 'intellij' }, -- when it doesn't apply, <leader>cf falls back to jdtls
       -- Vue projects: when prettier doesn't apply, ts_ls / vue_ls format
       vue = { 'prettier' },
       javascript = { 'prettier' },

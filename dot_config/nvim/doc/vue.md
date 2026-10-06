@@ -31,7 +31,7 @@ editor. Projects following TypeScript's migration path (`typescript` aliased to
 
 ## Formatting
 
-| The project has | `<leader>f` and on save use |
+| The project has | `<leader>cf` and on save use |
 | --- | --- |
 | A prettier config (`.prettierrc*`, `prettier.config.*`, or `"prettier"` in `package.json`) | prettier, the project's own from `node_modules` |
 | None | `ts_ls` / `vue_ls` |

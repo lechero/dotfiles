@@ -45,6 +45,7 @@ return {
       { '<leader>a', group = '[A]I (Sidekick)', mode = { 'n', 'x' } },
       { '<leader>g', group = '[G]it and GitLab' },
       { '<leader>o', group = '[O]pen' },
+      { '<leader>f', group = '[F]ile: copy its path or contents' },
     },
   },
 }

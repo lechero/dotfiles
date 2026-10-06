@@ -58,7 +58,7 @@ Java buffers (on top of the usual LSP maps: `gd`, `gr`, `gI`, `<leader>rn`, `<le
 | `<leader>tp` | Pick a test to run |
 | `<leader>tl` | Re-run the last test or debug session |
 | `<leader>th` | Toggle inlay hints (parameter names) |
-| `<leader>f` | Format the buffer or selection (see [Formatting](#formatting)) |
+| `<leader>cf` | Format the buffer or selection (see [Formatting](#formatting)) |
 
 Code generation (constructors, `toString`, `equals`/`hashCode`, delegate methods, overriding or
 implementing methods) is under `<leader>ca`.
@@ -93,13 +93,13 @@ quickfix list (`:copen`) and the full report is in the dap REPL.
 
 The project decides how java is formatted (`lua/fuentastic/plugins/conform.lua`):
 
-| The project has | `<leader>f` uses | On save |
+| The project has | `<leader>cf` uses | On save |
 | --- | --- | --- |
 | Spotless with an Eclipse profile | jdtls with that profile | yes |
 | An IntelliJ code style in `.idea/codeStyles/Project.xml` | IntelliJ's formatter (~3s) | no |
 | Neither | jdtls with Eclipse's built-in profile | no |
 
-In visual mode `<leader>f` only formats the selection. That helps in codebases that have drifted
+In visual mode `<leader>cf` only formats the selection. That helps in codebases that have drifted
 from their own style, where formatting a whole file rewrites lines you never touched.
 
 ### Spotless projects
@@ -161,7 +161,7 @@ while the IDE is open.
 | `<F5>` or `<leader>tc` do nothing | `:JdtRestart` (extensions installed after jdtls started) |
 | Import stuck ("Synchronizing projects 0%") | A Maven plugin's process hangs: `pgrep -lf -P "$(pgrep -d, -f jdt.ls.core)"` lists what jdtls started; skip that plugin in `jdtls/lifecycle-mapping-metadata.xml` |
 | Server errors | `:JdtShowLogs` |
-| IntelliJ format fails with "Only one instance" | A previous `<leader>f` is still running |
+| IntelliJ format fails with "Only one instance" | A previous `<leader>cf` is still running |
 | Formatting doesn't run | `:ConformInfo` |
 | No java highlighting | `:checkhealth nvim-treesitter` |
 
