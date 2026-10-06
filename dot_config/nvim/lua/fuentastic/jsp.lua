@@ -2,7 +2,7 @@
 -- an included or forwarded page, an imported or used Java class, a custom tag's tag file or class,
 -- an EL function's class, and in AEM a cq:include'd script or a resourceType's component. Paths
 -- resolve like the server resolves them (lua/fuentastic/refs.lua).
-local refs = require('fuentastic.refs')
+local refs = require 'fuentastic.refs'
 
 local M = {}
 
@@ -20,7 +20,7 @@ local function read(path)
   if not file then
     return nil
   end
-  local text = file:read('*a')
+  local text = file:read '*a'
   file:close()
   return text
 end
@@ -32,8 +32,8 @@ end
 -- The classes this page imports: <%@ page import="java.util.List, com.example.*" %>.
 local function imports()
   local list = {}
-  for value in buffer_text():gmatch([[%f[%w]import%s*=%s*["']([^"']+)]]) do
-    for name in value:gmatch('[%w_.$*]+') do
+  for value in buffer_text():gmatch [[%f[%w]import%s*=%s*["']([^"']+)]] do
+    for name in value:gmatch '[%w_.$*]+' do
       table.insert(list, name)
     end
   end
@@ -43,12 +43,12 @@ end
 -- The tag libraries this page declares, by prefix: <%@ taglib prefix="t" tagdir="/WEB-INF/tags" %>.
 local function taglibs()
   local libs = {}
-  for body in buffer_text():gmatch('<%%@%s*taglib(.-)%%>') do
+  for body in buffer_text():gmatch '<%%@%s*taglib(.-)%%>' do
     local function value(name)
       return body:match('%f[%w]' .. name .. [[%s*=%s*["']([^"']+)]])
     end
-    if value('prefix') then
-      libs[value('prefix')] = { uri = value('uri'), tagdir = value('tagdir') }
+    if value 'prefix' then
+      libs[value 'prefix'] = { uri = value 'uri', tagdir = value 'tagdir' }
     end
   end
   return libs
@@ -56,7 +56,7 @@ end
 
 -- The repo's tag library descriptor (.tld) for a taglib uri, and its text.
 local function find_tld(uri, ctx)
-  if uri:match('%.tld$') then -- the old style: uri="/WEB-INF/tlds/app.tld"
+  if uri:match '%.tld$' then -- the old style: uri="/WEB-INF/tlds/app.tld"
     local path = refs.find_script(uri, ctx)
     return path, path and read(path)
   end
@@ -66,7 +66,7 @@ local function find_tld(uri, ctx)
   end
   for _, path in ipairs(tlds) do
     local tld = read(path)
-    if tld and tld:match('<uri>%s*(.-)%s*</uri>') == uri then
+    if tld and tld:match '<uri>%s*(.-)%s*</uri>' == uri then
       return path, tld
     end
   end
@@ -85,11 +85,11 @@ local function find_tag(lib, name, kinds, ctx)
   end
   for _, kind in ipairs(kinds) do
     for entry in tld:gmatch('<' .. kind .. '>(.-)</' .. kind .. '>') do
-      if entry:match('<name>%s*(.-)%s*</name>') == name then
-        local class = entry:match('<tag%-class>%s*(.-)%s*</tag%-class>') or entry:match('<function%-class>%s*(.-)%s*</function%-class>')
+      if entry:match '<name>%s*(.-)%s*</name>' == name then
+        local class = entry:match '<tag%-class>%s*(.-)%s*</tag%-class>' or entry:match '<function%-class>%s*(.-)%s*</function%-class>'
         -- a tag file's path is relative to its webapp or jar: /WEB-INF/tags/..., /META-INF/tags/...
-        local file = entry:match('<path>%s*(.-)%s*</path>')
-        local root = path:match('^(.*)/[WM]E[BT]A?%-INF/')
+        local file = entry:match '<path>%s*(.-)%s*</path>'
+        local root = path:match '^(.*)/[WM]E[BT]A?%-INF/'
         local found = class and refs.find_class(class, ctx) or file and root and refs.is_file(root .. file) and root .. file
         if found then
           return found
@@ -116,17 +116,17 @@ local function java_class(found, line, ctx)
   local parser = vim.treesitter.get_parser(0, 'jsp', { error = false })
   if parser then
     parser:parse() -- get_node() only sees what's been parsed
-    local node = vim.treesitter.get_node({ ignore_injections = true })
+    local node = vim.treesitter.get_node { ignore_injections = true }
     if node and not vim.list_contains({ 'code', 'attribute_value' }, node:type()) then
       return -- a capitalized word in the markup
     end
   end
-  local col = vim.fn.col('.')
-  for s, dotted, e in line:gmatch('()([%a_$][%w_$.]*)()') do
+  local col = vim.fn.col '.'
+  for s, dotted, e in line:gmatch '()([%a_$][%w_$.]*)()' do
     if col >= s and col < e then
       local parts = vim.split(dotted, '.', { plain = true })
       for i, part in ipairs(parts) do
-        if part:match('^%u') then
+        if part:match '^%u' then
           local name = table.concat(parts, '.', 1, i)
           local resolve
           if i > 1 then
@@ -180,14 +180,14 @@ local function references(line, ctx)
   refs.scan(found, line, attr('%a+:adaptTo', 'adaptTo'), class) -- sling:adaptTo
   refs.scan_categories(found, line, attr('%a+:includeClientLib', 'categories'), ctx) -- cq:, ui:
   -- import="java.util.List, com.example.*": each class (or package) on its own
-  for s, value in line:gmatch([[%f[%w]import%s*=%s*["']()([^"']+)]]) do
-    for offset, name in value:gmatch('()([%w_.$*]+)') do
+  for s, value in line:gmatch [[%f[%w]import%s*=%s*["']()([^"']+)]] do
+    for offset, name in value:gmatch '()([%w_.$*]+)' do
       table.insert(found, {
         s = s + offset - 1,
         e = s + offset + #name - 2,
         label = name,
         resolve = function()
-          return name:match('%.%*$') and find_package(name:sub(1, -3), ctx) or class(name)
+          return name:match '%.%*$' and find_package(name:sub(1, -3), ctx) or class(name)
         end,
       })
     end
@@ -215,7 +215,7 @@ local function references(line, ctx)
 
   -- Values computed when the page runs, page="${view}", can't be followed.
   return vim.tbl_filter(function(ref)
-    return not ref.label:find('[$#]{') and not ref.label:find('<%', 1, true)
+    return not ref.label:find '[$#]{' and not ref.label:find('<%', 1, true)
   end, found)
 end
 

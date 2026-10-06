@@ -8,27 +8,27 @@ local function winmove(key)
     return
   end
 
-  if key:match('[jk]') then
-    vim.cmd.wincmd('s')
+  if key:match '[jk]' then
+    vim.cmd.wincmd 's'
   else
-    vim.cmd.wincmd('v')
+    vim.cmd.wincmd 'v'
   end
 
   vim.cmd.wincmd(key)
 end
 
 map('n', '<leader>h', function()
-  winmove('h')
+  winmove 'h'
 end, { noremap = true, silent = true, desc = 'Window left (split if none)' })
 
 map('n', '<leader>j', function()
-  winmove('j')
+  winmove 'j'
 end, { noremap = true, silent = true, desc = 'Window below (split if none)' })
 
 map('n', '<leader>k', function()
-  winmove('k')
+  winmove 'k'
 end, { noremap = true, silent = true, desc = 'Window above (split if none)' })
 
 map('n', '<leader>l', function()
-  winmove('l')
+  winmove 'l'
 end, { noremap = true, silent = true, desc = 'Window right (split if none)' })

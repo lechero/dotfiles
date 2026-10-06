@@ -1,7 +1,7 @@
 -- SonarQube issues as diagnostics in Java and TypeScript. A project with a .sonarlint/connectedMode.json
 -- in its git root is checked against its own rules on its SonarQube server or SonarQube Cloud
 -- organization (connected mode); any other project gets Sonar's default rules.
-local mason = vim.fn.stdpath('data') .. '/mason'
+local mason = vim.fn.stdpath 'data' .. '/mason'
 
 -- The file SonarQube for IDE in VS Code and IntelliJ writes when a team shares its binding:
 --   { "sonarQubeUri": "https://sonar.example.com", "projectKey": "group:artifact" }
@@ -12,7 +12,7 @@ local function read_binding(root)
   if not file then
     return nil
   end
-  local ok, binding = pcall(vim.json.decode, file:read('*a'))
+  local ok, binding = pcall(vim.json.decode, file:read '*a')
   file:close()
   if ok and type(binding) == 'table' and binding.projectKey and (binding.sonarQubeUri or binding.sonarCloudOrganization) then
     return binding
@@ -26,8 +26,8 @@ end
 -- for its token by region and organization (EU_my-org) rather than by URL.
 local cloud_hosts = { EU = 'sonarcloud.io', US = 'sonarqube.us' }
 local function get_token(_, server)
-  local host = server:match('^%a+://([^/:]+)') or cloud_hosts[server:match('^(%u%u)_')]
-  if host and vim.fn.executable('security') == 1 then
+  local host = server:match '^%a+://([^/:]+)' or cloud_hosts[server:match '^(%u%u)_']
+  if host and vim.fn.executable 'security' == 1 then
     local result = vim.system({ 'security', 'find-generic-password', '-s', 'sonarqube', '-a', host, '-w' }, { text = true }):wait()
     if result.code == 0 then
       return vim.trim(result.stdout)
@@ -41,7 +41,7 @@ end
 -- server takes a list, like connections.sonarqube; with a SonarQube Cloud binding they'd fail on a
 -- nil URL. Replaced before any server starts: each one takes the handlers when it starts.
 local function fix_connection_notices()
-  local connected_mode = require('sonarlint.connected_mode')
+  local connected_mode = require 'sonarlint.connected_mode'
   local function describe(ctx, id)
     local client = vim.lsp.get_client_by_id(ctx.client_id)
     local connections = client and vim.tbl_get(client.config.settings, 'sonarlint', 'connectedMode', 'connections') or {}
@@ -74,7 +74,7 @@ return {
     local analyzers = mason .. '/share/sonarlint-analyzers/'
     fix_connection_notices()
 
-    require('sonarlint').setup({
+    require('sonarlint').setup {
       server = {
         cmd = {
           mason .. '/bin/sonarlint-language-server',
@@ -101,7 +101,7 @@ return {
             return
           end
           local url = binding.sonarQubeUri:gsub('/+$', '')
-          local connection = url:match('^%a+://([^/:]+)') or url
+          local connection = url:match '^%a+://([^/:]+)' or url
           config.settings.sonarlint.connectedMode = {
             connections = { sonarqube = { { connectionId = connection, serverUrl = url } } },
             project = { connectionId = connection, projectKey = binding.projectKey },
@@ -110,6 +110,6 @@ return {
       },
       connected = { get_credentials = get_token },
       filetypes = { 'java', 'typescript', 'typescriptreact', 'javascript', 'javascriptreact' },
-    })
+    }
   end,
 }

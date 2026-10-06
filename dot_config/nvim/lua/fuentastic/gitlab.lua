@@ -8,7 +8,7 @@ end
 
 -- The git root of the current buffer (or of the cwd), and whether glab is there to ask GitLab.
 local function repo()
-  if vim.fn.executable('glab') == 0 then
+  if vim.fn.executable 'glab' == 0 then
     notify('Needs glab: `brew install glab`, then `glab auth login`', vim.log.levels.ERROR)
     return nil
   end
@@ -44,7 +44,7 @@ end
 -- The repo's CI files, root first: what `include: local:` can pull in is tracked by git.
 local function ci_files(root)
   local files = {}
-  for _, name in ipairs({ '.gitlab-ci.yml', '.gitlab-ci.yaml' }) do
+  for _, name in ipairs { '.gitlab-ci.yml', '.gitlab-ci.yaml' } do
     if vim.uv.fs_stat(root .. '/' .. name) then
       table.insert(files, root .. '/' .. name)
     end
@@ -67,7 +67,7 @@ local function locate(message, files)
     local buf = vim.fn.bufnr(file)
     local lines = buf ~= -1 and vim.api.nvim_buf_is_loaded(buf) and vim.api.nvim_buf_get_lines(buf, 0, -1, false) or vim.fn.readfile(file)
     for lnum, line in ipairs(lines) do
-      local job = line:match('^([^%s#][^:]*):%s*$') or line:match('^([^%s#][^:]*):%s+[&!]')
+      local job = line:match '^([^%s#][^:]*):%s*$' or line:match '^([^%s#][^:]*):%s+[&!]'
       local names_it = job and (vim.startswith(message, 'jobs:' .. job .. ' ') or vim.startswith(message, 'jobs ' .. job .. ' '))
       if names_it and (not best or #job > #best.job) then
         best = { job = job, filename = file, lnum = lnum }
@@ -86,7 +86,7 @@ function M.lint(dry_run)
     return
   end
   local files = ci_files(root)
-  if not files[1] or not files[1]:match('%.gitlab%-ci%.ya?ml$') then
+  if not files[1] or not files[1]:match '%.gitlab%-ci%.ya?ml$' then
     notify('No .gitlab-ci.yml in ' .. root, vim.log.levels.WARN)
     return
   end
@@ -108,7 +108,7 @@ function M.lint(dry_run)
     vim.schedule(function()
       local output = (result.stdout or '') .. (result.stderr or '')
       local items = {}
-      for message in output:gmatch('\n%d+ ([^\n]+)') do
+      for message in output:gmatch '\n%d+ ([^\n]+)' do
         local where = locate(message, files)
         table.insert(items, { filename = where.filename, lnum = where.lnum, text = message, type = 'E' })
       end
@@ -179,7 +179,7 @@ local function reason(err, none)
   end
   local text = table.concat(words, ' ')
   local lower = text:lower()
-  if text == '' or lower:match('no open merge request') or lower:match('no pipelines') or lower:match('404') then
+  if text == '' or lower:match 'no open merge request' or lower:match 'no pipelines' or lower:match '404' then
     return none
   end
   return text
@@ -197,19 +197,19 @@ local function render(state)
   end
   local function blank()
     if lines[#lines] ~= '' then
-      add('')
+      add ''
     end
   end
 
   add(' ' .. (state.branch or '?'))
   mark(0, #lines[#lines], 'Title')
   if state.upstream then
-    local behind, ahead = state.upstream:match('(%d+)%s+(%d+)')
+    local behind, ahead = state.upstream:match '(%d+)%s+(%d+)'
     lines[#lines] = lines[#lines] .. string.format('   %s ahead, %s behind the remote', ahead, behind)
   else
     lines[#lines] = lines[#lines] .. '   not pushed'
   end
-  add('')
+  add ''
 
   local mr = state.mr
   if mr then
@@ -289,7 +289,7 @@ local function render(state)
     mark(0, #lines[#lines], 'Comment')
   end
   blank()
-  add(' o open in browser · l job log · v pipeline view · r refresh · q close')
+  add ' o open in browser · l job log · v pipeline view · r refresh · q close'
   mark(0, #lines[#lines], 'Comment')
   -- what `o` opens on a line that links nowhere
   links.default = mr and mr.web_url or pipeline and pipeline.web_url
@@ -331,7 +331,7 @@ function M.status()
     style = 'minimal',
   })
   vim.wo[win].cursorline = true
-  local ns = vim.api.nvim_create_namespace('fuentastic-gitlab')
+  local ns = vim.api.nvim_create_namespace 'fuentastic-gitlab'
   local links, timer = {}, vim.uv.new_timer()
 
   local function show(lines, marks)
@@ -421,7 +421,7 @@ function M.status()
     end
   end)
   map('v', function()
-    vim.cmd('close')
+    vim.cmd 'close'
     M.pipeline_view(root)
   end)
   vim.api.nvim_create_autocmd('BufWipeout', {
@@ -432,7 +432,7 @@ function M.status()
     end,
   })
 
-  show({ ' Asking GitLab…' })
+  show { ' Asking GitLab…' }
   refresh()
 end
 

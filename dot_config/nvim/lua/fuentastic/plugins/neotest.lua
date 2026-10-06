@@ -10,7 +10,7 @@ local function read_package(dir)
   if not file then
     return nil
   end
-  local ok, package = pcall(vim.json.decode, file:read('*a'))
+  local ok, package = pcall(vim.json.decode, file:read '*a')
   file:close()
   return ok and type(package) == 'table' and package or nil
 end
@@ -36,14 +36,14 @@ end
 local function jest_command(path)
   local dir = package_dir(path)
   local test = vim.tbl_get(read_package(dir) or {}, 'scripts', 'test') or ''
-  if test:match('%f[%w]jest%f[%W]') then
+  if test:match '%f[%w]jest%f[%W]' then
     return 'npm test -- --coverage=false'
   end
   return dir and vim.uv.fs_stat(dir .. '/node_modules/.bin/jest') and dir .. '/node_modules/.bin/jest' or 'npx jest'
 end
 
 local function map_keys(buf)
-  local neotest = require('neotest')
+  local neotest = require 'neotest'
   local function map(keys, fn, desc)
     vim.keymap.set('n', keys, fn, { buffer = buf, desc = 'Test: ' .. desc })
   end
@@ -53,7 +53,7 @@ local function map_keys(buf)
   end, 'this file ([C]lass)')
   map('<leader>tl', neotest.run.run_last, 'run [L]ast again')
   map('<leader>to', function()
-    neotest.output.open({ enter = true, auto_close = true })
+    neotest.output.open { enter = true, auto_close = true }
   end, '[O]utput of the nearest test')
   map('<leader>ts', neotest.summary.toggle, '[S]ummary of the test files')
   map('<leader>tw', function()
@@ -70,16 +70,16 @@ return {
     'nvim-neotest/neotest-jest',
   },
   config = function()
-    require('neotest').setup({
+    require('neotest').setup {
       adapters = {
-        require('neotest-jest')({
+        require 'neotest-jest' {
           jestCommand = jest_command,
           cwd = package_dir,
           isTestFile = is_jest_test,
           env = { CI = 'true' }, -- no interactive prompts, no watch mode
-        }),
+        },
       },
-    })
+    }
 
     local group = vim.api.nvim_create_augroup('fuentastic-neotest', { clear = true })
     vim.api.nvim_create_autocmd('FileType', {

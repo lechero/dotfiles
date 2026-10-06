@@ -7,7 +7,7 @@ local function read(path)
   if not file then
     return nil
   end
-  local text = file:read('*a')
+  local text = file:read '*a'
   file:close()
   return text
 end
@@ -30,19 +30,19 @@ local function checkstyle_setup(file)
     return nil
   end
   for dir in vim.fs.parents(file) do
-    local plugin = (read(dir .. '/pom.xml') or ''):match('<artifactId>maven%-checkstyle%-plugin</artifactId>(.-)</plugin>')
-    local config = plugin and plugin:match('<configLocation>%s*(.-)%s*</configLocation>')
+    local plugin = (read(dir .. '/pom.xml') or ''):match '<artifactId>maven%-checkstyle%-plugin</artifactId>(.-)</plugin>'
+    local config = plugin and plugin:match '<configLocation>%s*(.-)%s*</configLocation>'
     if config then
       local function path(value)
         value = value:gsub('^%${project%.basedir}/?', '')
         return vim.startswith(value, '/') and value or vim.fs.normalize(dir .. '/' .. value)
       end
-      for pattern in (plugin:match('<excludes>%s*(.-)%s*</excludes>') or ''):gmatch('[^,%s]+') do
+      for pattern in (plugin:match '<excludes>%s*(.-)%s*</excludes>' or ''):gmatch '[^,%s]+' do
         if vim.glob.to_lpeg(pattern):match(file:sub(#sources + 1)) then
           return nil
         end
       end
-      local suppressions = plugin:match('<suppressionsLocation>%s*(.-)%s*</suppressionsLocation>')
+      local suppressions = plugin:match '<suppressionsLocation>%s*(.-)%s*</suppressionsLocation>'
       -- a classpath resource (google_checks.xml, a shared config jar) can't be read from here
       return vim.uv.fs_stat(path(config)) and { config = path(config), suppressions = suppressions and path(suppressions) } or nil
     end
@@ -58,7 +58,7 @@ local function checkstyle_config(setup)
   if not setup.suppressions then
     return setup.config
   end
-  local copy = vim.fn.stdpath('cache') .. '/checkstyle/' .. vim.fn.sha256(setup.config .. setup.suppressions):sub(1, 12) .. '.xml'
+  local copy = vim.fn.stdpath 'cache' .. '/checkstyle/' .. vim.fn.sha256(setup.config .. setup.suppressions):sub(1, 12) .. '.xml'
   if mtime(copy) < math.max(mtime(setup.config), mtime(setup.suppressions)) then
     local filter = string.format('\n  <module name="SuppressionFilter"><property name="file" value="%s"/></module>', setup.suppressions)
     local wrapped = (read(setup.config) or ''):gsub('(<module%s+name%s*=%s*"Checker"%s*>)', '%1' .. filter, 1)
@@ -88,17 +88,17 @@ local checkstyle = {
   -- [WARN] /path/File.java:12:5: Line is longer than 160 characters (found 171). [LineLength]
   parser = function(output)
     local diagnostics = {}
-    for line in output:gmatch('[^\n]+') do
-      local severity, lnum, rest = line:match('^%[(%u+)%] .-:(%d+):(.*)$')
+    for line in output:gmatch '[^\n]+' do
+      local severity, lnum, rest = line:match '^%[(%u+)%] .-:(%d+):(.*)$'
       if severity then
-        local col, message = rest:match('^(%d+): (.*)$')
+        local col, message = rest:match '^(%d+): (.*)$'
         message = message or vim.trim(rest)
         table.insert(diagnostics, {
           lnum = tonumber(lnum) - 1,
           col = col and tonumber(col) - 1 or 0,
           severity = checkstyle_severities[severity] or vim.diagnostic.severity.WARN,
           message = message:gsub('%s*%[%w+%]$', ''),
-          code = message:match('%[(%w+)%]$'),
+          code = message:match '%[(%w+)%]$',
           source = 'checkstyle',
         })
       end
@@ -163,7 +163,7 @@ local function linters_for(buf)
   local file = vim.api.nvim_buf_get_name(buf)
   local ft = vim.bo[buf].filetype
   if ft == 'java' then
-    return checkstyle_setup(file) and vim.fn.executable('checkstyle') == 1 and { checkstyle = vim.fs.dirname(file) } or {}
+    return checkstyle_setup(file) and vim.fn.executable 'checkstyle' == 1 and { checkstyle = vim.fs.dirname(file) } or {}
   end
   if ft == 'css' or ft == 'scss' or ft == 'less' then
     local config = nearest(buf, stylelint_configs)
@@ -180,7 +180,7 @@ return {
   'mfussenegger/nvim-lint',
   event = { 'BufReadPost', 'BufNewFile' },
   config = function()
-    local lint = require('lint')
+    local lint = require 'lint'
     lint.linters.checkstyle = checkstyle
     lint.linters.html_validate = html_validate
     lint.linters.stylelint.cmd = function()
