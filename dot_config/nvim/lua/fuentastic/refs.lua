@@ -20,7 +20,7 @@ local sources_by_repo = {}
 local function sources(file)
   local repo = vim.fs.root(file, '.git') or vim.fs.dirname(file)
   if not sources_by_repo[repo] then
-    local found = { jcr = {}, java = {}, tld = {} }
+    local found = { repo = repo, jcr = {}, java = {}, tld = {} }
     for _, depth in ipairs({ '', '/*', '/*/*' }) do
       local module = repo .. depth .. '/src/main'
       vim.list_extend(found.jcr, vim.fn.glob(module .. '/content/jcr_root', false, true))
@@ -91,6 +91,59 @@ function M.find_component(ref, ctx)
         end
         return dir
       end
+    end
+  end
+end
+
+-- A repository path's node: its folder's .content.xml (or the folder), or a file. Names with a
+-- namespace are escaped on disk the FileVault way: cq:dialog is _cq_dialog.
+function M.find_node(path, ctx)
+  local escaped = path:gsub('/([%l]+):', '/_%1_'):gsub('/$', '')
+  for _, root in ipairs(ctx.jcr) do
+    local base = root .. escaped
+    for _, candidate in ipairs({ base .. '/.content.xml', base .. '.xml', base }) do
+      if M.is_file(candidate) then
+        return candidate
+      end
+    end
+    if M.is_dir(base) then
+      return base
+    end
+  end
+end
+
+-- The repo's clientlib folders by category: the .content.xml of each cq:ClientLibraryFolder, found
+-- with git grep (fast, and skips build output).
+local clientlibs_by_repo = {}
+function M.find_clientlib(category, ctx)
+  if not clientlibs_by_repo[ctx.repo] then
+    local index = {}
+    local grep = vim.system({ 'git', 'grep', '-l', 'cq:ClientLibraryFolder', '--', '*.content.xml' }, { cwd = ctx.repo, text = true }):wait()
+    for _, relative in ipairs(vim.split(grep.stdout or '', '\n', { trimempty = true })) do
+      local file = ctx.repo .. '/' .. relative
+      local categories = table.concat(vim.fn.readfile(file), '\n'):match('%scategories="%[?([^"%]]*)')
+      for name in (categories or ''):gmatch('[^,%s]+') do
+        index[name] = index[name] or file
+      end
+    end
+    clientlibs_by_repo[ctx.repo] = index
+  end
+  return clientlibs_by_repo[ctx.repo][category]
+end
+
+-- Adds a reference for each clientlib category in a list on the line, spanning the category: the
+-- values of `categories='a'`, `categories=['a', 'b']`, `extraClientlibs="[a,b]"` and the like.
+function M.scan_categories(found, line, pattern, ctx)
+  for start, list in line:gmatch(pattern) do
+    for offset, name in list:gmatch('()([%w_][%w_.%-]*)') do
+      table.insert(found, {
+        s = start + offset - 1,
+        e = start + offset + #name - 2,
+        label = 'clientlib ' .. name,
+        resolve = function()
+          return M.find_clientlib(name, ctx)
+        end,
+      })
     end
   end
 end
