@@ -167,6 +167,7 @@ local function setup_lsp()
     'java-debug-adapter', -- loaded into jdtls as bundles
     'java-test',
     'sonarlint-language-server', -- started by sonarlint.nvim (plugins/sonarlint.lua)
+    'checkstyle', -- run by nvim-lint (plugins/lint.lua)
   })
 
   require('mason-tool-installer').setup({ ensure_installed = ensure_installed })
