@@ -6,13 +6,20 @@ local function setup_lsp_keymaps(event)
 
   local client = vim.lsp.get_client_by_id(event.data.client_id)
 
-  -- Only for servers that answer it (Copilot attaches everywhere and answers none), and not over a
-  -- buffer's own gd: HTL's, JSP's and .content.xml's (after/ftplugin/) know what lemminx doesn't.
+  -- Not over a buffer's own gd: HTL's, JSP's and .content.xml's (after/ftplugin/) know what lemminx
+  -- doesn't. Whether a server answers is checked when it's pressed, not on attach: jdtls registers
+  -- definitions only after attaching, and Copilot attaches everywhere and answers none (Vim's gd then).
   local own_gd = vim.iter(vim.api.nvim_buf_get_keymap(event.buf, 'n')):any(function(m)
     return m.lhs == 'gd' and not vim.startswith(m.desc or '', 'LSP: ')
   end)
-  if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_definition) and not own_gd then
-    map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
+  if not own_gd then
+    map('gd', function()
+      if #vim.lsp.get_clients({ bufnr = 0, method = vim.lsp.protocol.Methods.textDocument_definition }) > 0 then
+        require('telescope.builtin').lsp_definitions()
+      else
+        vim.cmd('normal! gd')
+      end
+    end, '[G]oto [D]efinition')
   end
   map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
   map('gI', require('telescope.builtin').lsp_implementations, '[G]oto [I]mplementation')
