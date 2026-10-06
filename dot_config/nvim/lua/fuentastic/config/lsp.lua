@@ -6,9 +6,12 @@ local function setup_lsp_keymaps(event)
 
   local client = vim.lsp.get_client_by_id(event.data.client_id)
 
-  -- Only for servers that answer it: Copilot attaches everywhere, and would swap a buffer's own gd
-  -- (HTL's, from after/ftplugin/html.lua) for "server does not support textDocument/definition".
-  if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_definition) then
+  -- Only for servers that answer it (Copilot attaches everywhere and answers none), and not over a
+  -- buffer's own gd: HTL's, JSP's and .content.xml's (after/ftplugin/) know what lemminx doesn't.
+  local own_gd = vim.iter(vim.api.nvim_buf_get_keymap(event.buf, 'n')):any(function(m)
+    return m.lhs == 'gd' and not vim.startswith(m.desc or '', 'LSP: ')
+  end)
+  if client and client:supports_method(vim.lsp.protocol.Methods.textDocument_definition) and not own_gd then
     map('gd', require('telescope.builtin').lsp_definitions, '[G]oto [D]efinition')
   end
   map('gr', require('telescope.builtin').lsp_references, '[G]oto [R]eferences')
