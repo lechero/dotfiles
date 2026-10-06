@@ -14,6 +14,10 @@ alias v="nvim"
 alias cls="clear"
 alias lg="lazygit"
 
+# This machine's own setup, like PATH entries that tools add. Not tracked:
+# see .chezmoiignore.
+[[ -r "$HOME/.config/shell/local.sh" ]] && source "$HOME/.config/shell/local.sh"
+
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 export SDKMAN_DIR="$HOME/.sdkman"
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"

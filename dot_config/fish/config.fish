@@ -27,9 +27,3 @@ if status is-interactive
         test -r .nvmrc; and nvm use
     end
 end
-
-# Rancher Desktop adds this block back whenever it's missing or changed, so it
-# has to stay exactly as Rancher writes it.
-### MANAGED BY RANCHER DESKTOP START (DO NOT EDIT)
-set --export --prepend PATH "/Users/miguelfuentes/.rd/bin"
-### MANAGED BY RANCHER DESKTOP END (DO NOT EDIT)

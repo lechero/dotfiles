@@ -160,3 +160,9 @@ eval "$(fzf --bash)"
 eval "$(starship init bash)"
 # mynav path export
 export PATH="$PATH:$HOME/.mynav"
+
+# This machine's own setup, like PATH entries that tools add. Not tracked:
+# see .chezmoiignore.
+if [ -r "$HOME/.config/shell/local.sh" ]; then
+    . "$HOME/.config/shell/local.sh"
+fi
