@@ -4,12 +4,13 @@ return {
   dependencies = { 'nvim-lua/plenary.nvim' },
   config = function()
     local harpoon = require 'harpoon'
-    vim.keymap.set('n', '<leader>a', function()
+    -- Not <leader>a: that's Sidekick's prefix, so Harpoon would wait out which-key's timeout.
+    vim.keymap.set('n', '<leader>m', function()
       harpoon:list():add()
-    end)
+    end, { desc = 'Harpoon: [M]ark this file' })
     vim.keymap.set('n', '<C-e>', function()
       harpoon.ui:toggle_quick_menu(harpoon:list())
-    end)
+    end, { desc = 'Harpoon: the marked files' })
   end,
 }
 
