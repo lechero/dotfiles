@@ -1,3 +1,15 @@
+# Repo-only files: docs, notes and helper scripts that live in this repo but
+# aren't dotfiles, so they stay out of ~
+AGENTS.md
+README.md
+SIDEKICK.md
+nvim.log
+setup
+agents
+cv
+scripts
+state
+
 # Neovim
 **/autoload/
 **/autoload/**/*
