@@ -9,7 +9,8 @@ version: "3"
 
 vars:
   PRIO: 2
-  DOTUI: "{{.ROOT_DIR}}/dotui/bin/dotui"
+  DOTUI: "{{.ROOT_DIR}}/apps/bin/dotui"
+  DISK: "{{.ROOT_DIR}}/apps/bin/manage-disk"
   PACKAGES: "{{.ROOT_DIR}}/packages.yaml"
   STYLUA: "{{.HOME}}/.local/share/nvim/mason/bin/stylua"
 
@@ -33,18 +34,18 @@ tasks:
 
   deps:check:
     desc: Fail if a package up to PRIO is missing
-    deps: [dotui:build]
+    deps: [apps:build]
     cmd: "{{.DOTUI}} check --file {{.PACKAGES}} --prio {{.PRIO}}"
 
   deps:install:
     desc: Install the missing packages up to PRIO
-    deps: [dotui:build]
+    deps: [apps:build]
     interactive: true
     cmd: "{{.DOTUI}} install --file {{.PACKAGES}} --prio {{.PRIO}}"
 
   deps:list:
     desc: List every package with its priority and install state (task deps:list -- --missing)
-    deps: [dotui:build]
+    deps: [apps:build]
     cmd: "{{.DOTUI}} list --file {{.PACKAGES}} {{.CLI_ARGS}}"
 
   dotfiles:status:
@@ -73,33 +74,64 @@ tasks:
 
   dotui:
     desc: Open dotui
-    deps: [dotui:build]
+    deps: [apps:build]
     interactive: true
     cmd: "{{.DOTUI}} --file {{.PACKAGES}}"
 
-  dotui:build:
-    desc: Build dotui into dotui/bin
-    dir: dotui
+  disk:
+    desc: Open manage-disk; it cleans for real after you confirm
+    deps: [apps:build]
+    interactive: true
+    cmd: "{{.DISK}} {{.CLI_ARGS}}"
+
+  disk:dry:
+    desc: Open manage-disk with deletion switched off
+    deps: [apps:build]
+    interactive: true
+    cmd: "{{.DISK}} --dry-run {{.CLI_ARGS}}"
+
+  disk:report:
+    desc: Print the disk overview and cleanup plan, changing nothing (task disk:report -- -v lists every item)
+    deps: [apps:build]
+    cmd: "{{.DISK}} report {{.CLI_ARGS}}"
+
+  disk:worktrees:
+    desc: List every git worktree with a verdict, changing nothing (task disk:worktrees -- --fetch checks against today's main)
+    deps: [apps:build]
+    cmd: "{{.DISK}} worktrees {{.CLI_ARGS}}"
+
+  disk:docker:
+    desc: "Docker's own disk, a verdict on everything in it, and the cheapest way to 22 GiB free (task disk:docker -- --target 30), changing nothing"
+    deps: [apps:build]
+    cmd: "{{.DISK}} docker {{.CLI_ARGS}}"
+
+  disk:logs:
+    desc: Show today's manage-disk cleanup log
+    cmd: cat "$HOME/Library/Logs/manage-disk/$(date +%F).log"
+
+  apps:build:
+    desc: Build dotui and manage-disk into apps/bin
+    dir: apps
     sources: ["**/*.go", go.mod, go.sum]
-    generates: [bin/dotui]
-    cmd: go build -o bin/dotui ./cmd/dotui
+    generates: [bin/dotui, bin/manage-disk]
+    cmd: go build -o bin/ ./cmd/...
 
-  dotui:install:
-    desc: Install dotui into ~/.local/bin
-    dir: dotui
-    cmd: go build -o "$HOME/.local/bin/dotui" ./cmd/dotui
+  apps:install:
+    desc: Install dotui and manage-disk into ~/.local/bin
+    dir: apps
+    cmd: go build -o "$HOME/.local/bin/" ./cmd/...
 
-  dotui:test:
-    desc: Vet, test and lint dotui
-    dir: dotui
+  apps:test:
+    desc: Vet, test and lint dotui and manage-disk
+    dir: apps
     cmds:
       - go vet ./...
       - go test -race ./...
       - golangci-lint run ./...
 
   lint:
-    desc: Lint the shell scripts, fish files, Neovim Lua and dotui
-    deps: [lint:shell, lint:fish, lint:lua, dotui:test]
+    desc: Lint the shell scripts, fish files, Neovim Lua and the Go apps
+    deps: [lint:shell, lint:fish, lint:lua, apps:test]
 
   lint:shell:
     desc: shellcheck the scripts and the rendered chezmoi run scripts

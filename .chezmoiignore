@@ -10,7 +10,7 @@ cv
 scripts
 state
 packages.yaml
-dotui
+apps
 Taskfile.yml
 
 # Neovim
