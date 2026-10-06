@@ -1,7 +1,7 @@
 -- gd for HTL, AEM's component scripts. No language server understands HTL, so this opens what the
 -- cursor line references: a resourceType's component, a data-sly-use script or Java class, a
--- data-sly-include, or the template a data-sly-call renders. Resolving is shared with JSP's gd
--- (lua/fuentastic/refs.lua).
+-- data-sly-include, the template a data-sly-call renders, or a clientlib category. Resolving is
+-- shared with JSP's and .content.xml's gd (lua/fuentastic/refs.lua).
 local refs = require('fuentastic.refs')
 
 local M = {}
@@ -50,7 +50,11 @@ local function references(line, ctx)
   refs.scan(found, line, 'data%-sly%-call%s*=%s*"%${%s*([%w_]+)%.?([%w_]*)', function(var, name)
     return find_call(var, name, ctx)
   end)
-  return found
+  -- ${clientlib.css @ categories='site.base'}: the clientlib, not AEM's clientlib template
+  refs.scan_categories(found, line, '%f[%w]categories%s*=%s*%[?()([^%]}]+)', ctx)
+  return vim.tbl_filter(function(ref)
+    return not (ref.label:match('^[%w_]+%.[%w_]+$') and line:sub(ref.s):match('^[^}]-categories%s*='))
+  end, found)
 end
 
 function M.goto_reference()

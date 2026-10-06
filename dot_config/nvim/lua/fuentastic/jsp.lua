@@ -178,6 +178,7 @@ local function references(line, ctx)
   refs.scan(found, line, attr('jsp:useBean', 'class'), class)
   refs.scan(found, line, attr('jsp:useBean', 'type'), class)
   refs.scan(found, line, attr('%a+:adaptTo', 'adaptTo'), class) -- sling:adaptTo
+  refs.scan_categories(found, line, attr('%a+:includeClientLib', 'categories'), ctx) -- cq:, ui:
   -- import="java.util.List, com.example.*": each class (or package) on its own
   for s, value in line:gmatch([[%f[%w]import%s*=%s*["']()([^"']+)]]) do
     for offset, name in value:gmatch('()([%w_.$*]+)') do
