@@ -11,6 +11,14 @@ return {
       },
     }
 
+    -- Closing a session stops its language servers with vim.lsp.stop_client(), which Nvim 0.13
+    -- removes.
+    require('possession.utils').stop_lsp_clients = function()
+      for _, client in ipairs(vim.lsp.get_clients()) do
+        client:stop()
+      end
+    end
+
     -- <c-t> deletes the highlighted session, <c-r> renames it
     vim.keymap.set('n', '<leader>sS', function()
       require('telescope').extensions.possession.list()
