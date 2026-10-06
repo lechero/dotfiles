@@ -59,36 +59,41 @@ packages:
 
   # 3 sometimes
   - {name: act, prio: 3, note: "Runs GitHub Actions locally; projects use it"}
+  - {name: dhth/tap/act3, prio: 3, note: "GitHub Actions run summaries"}
+  - {name: actionlint, prio: 3, note: "Lints GitHub Actions workflows; pstack uses it"}
   - {name: bottom, prio: 3, note: "System monitor, `btm`"}
   - {name: ca-certificates, prio: 3, note: "Other packages need it"}
   - {name: cairo, prio: 3, note: "Library other packages need"}
   - {name: calibre, cask: true, prio: 3, note: "E-book manager"}
   - {name: changie, prio: 3, note: "Changelogs; projects use it"}
-  - {name: charmbracelet/tap/crush, prio: 3, note: "AI coding assistant"}
-  - {name: charmbracelet/tap/mods, prio: 3, note: "AI on the command line"}
   - {name: cloudflared, prio: 3, note: "Cloudflare tunnels; projects use it"}
   - {name: cocoapods, prio: 3, note: "iOS dependencies; projects use it"}
   - {name: coreutils, prio: 3, note: "GNU core utilities"}
+  - {name: charmbracelet/tap/crush, prio: 3, note: "AI coding assistant"}
+  - {name: csvkit, prio: 3, note: "CSV tools; woof's scripts use them"}
   - {name: curl, prio: 3, note: "Other packages need it"}
   - {name: devpod, cask: true, prio: 3, note: "Dev containers"}
-  - {name: dhth/tap/act3, prio: 3, note: "GitHub Actions run summaries"}
   - {name: difftastic, prio: 3, note: "Syntax-aware diffs, `difft`"}
+  - {name: dotenvx/brew/dotenvx, prio: 3, note: "Encrypted .env files"}
   - {name: dust, prio: 3, note: "Disk usage"}
+  - {name: ffmpegthumbnailer, prio: 3, note: "Video thumbnails for yazi"}
   - {name: gdal, prio: 3, note: "Geospatial data; projects use it"}
   - {name: gemini-cli, prio: 3, note: "Gemini CLI"}
   - {name: giflib, prio: 3, note: "Library other packages need"}
   - {name: git-lfs, prio: 3, note: "Git large files; other packages need it"}
   - {name: glow, prio: 3, note: "Markdown in the terminal"}
   - {name: golangci-lint, prio: 3, note: "Go linters; projects use it"}
-  - {name: gromgit/fuse/sshfs-mac, prio: 3, note: "Mount remote folders over SSH"}
   - {name: gum, prio: 3, note: "Prompts for shell scripts; projects use it"}
   - {name: herdr, prio: 3, note: "Agent multiplexer"}
   - {name: jiratui, prio: 3, note: "Jira TUI"}
   - {name: k6, prio: 3, note: "Load testing; projects use it"}
   - {name: kustomize, prio: 3, note: "Kubernetes manifests; projects use it"}
   - {name: libpng, prio: 3, note: "Library other packages need"}
+  - {name: librsvg, prio: 3, note: "rsvg-convert; gigeorgi's brand build uses it"}
   - {name: macfuse, cask: true, prio: 3, note: "sshfs needs it"}
+  - {name: media-info, prio: 3, note: "Audio and video details for yazi"}
   - {name: mkcert, prio: 3, note: "Local HTTPS certificates; projects use it"}
+  - {name: charmbracelet/tap/mods, prio: 3, note: "AI on the command line"}
   - {name: mysql, prio: 3, note: "MySQL server"}
   - {name: mysql-client, prio: 3, note: "MySQL client"}
   - {name: ngrok, cask: true, prio: 3, note: "Tunnels; projects use it"}
@@ -96,74 +101,22 @@ packages:
   - {name: pkgconf, prio: 3, note: "Build tool other packages need"}
   - {name: podman, prio: 3, note: "Containers"}
   - {name: poppler, prio: 3, note: "PDF library other packages need"}
+  - {name: portaudio, prio: 3, note: "Audio library reachai's TTS setup needs"}
+  - {name: python@3.11, prio: 3, note: "Two project virtualenvs run on it"}
   - {name: python@3.12, prio: 3, note: "Other packages need it"}
+  - {name: python@3.13, prio: 3, note: "copilot_refactor_agent's virtualenv runs on it"}
   - {name: rabbitmq, prio: 3, note: "Message broker; projects use it"}
   - {name: restic, prio: 3, note: "Backups"}
+  - {name: rsync, prio: 3, note: "Newer rsync; fusified's Taskfile uses it"}
   - {name: shc, prio: 3, note: "Shell script compiler"}
   - {name: sqlite, prio: 3, note: "Library other packages need"}
+  - {name: gromgit/fuse/sshfs-mac, prio: 3, note: "Mount remote folders over SSH"}
+  - {name: hashicorp/tap/terraform, prio: 3, note: "region-tool-infra is Terraform"}
   - {name: tre, prio: 3, note: "Fuzzy grep, `agrep`"}
   - {name: watch, prio: 3, note: "Repeats a command"}
   - {name: wget, prio: 3, note: "Downloads"}
+  - {name: yazi, prio: 3, note: "File manager; Neovim's ;o opens it"}
   - {name: yq, prio: 3, note: "YAML processor; projects use it"}
+  - {name: zulu@17, cask: true, prio: 3, note: "JDK for the hardlysimple Android builds"}
 
-  # 4 rarely
-  - {name: 1password-cli, cask: true, prio: 4, note: "1Password CLI, `op`"}
-  - {name: actionlint, prio: 4, note: "Lints GitHub Actions workflows"}
-  - {name: bandwhich, prio: 4, note: "Bandwidth by process"}
-  - {name: bash-completion, prio: 4, note: "Completions for bash"}
-  - {name: block-goose, cask: true, prio: 4, note: "Goose desktop app"}
-  - {name: browsh-org/browsh/browsh, prio: 4, note: "Browser in the terminal"}
-  - {name: bruno, cask: true, prio: 4, note: "API client"}
-  - {name: chromium, cask: true, prio: 4, note: "Browser"}
-  - {name: charmbracelet/tap/wishlist, prio: 4, note: "SSH directory"}
-  - {name: circumflex, prio: 4, note: "Hacker News, `clx`"}
-  - {name: csvkit, prio: 4, note: "CSV tools"}
-  - {name: dotenvx/brew/dotenvx, prio: 4, note: "Encrypted .env files"}
-  - {name: drawio, cask: true, prio: 4, note: "Diagrams"}
-  - {name: duf, prio: 4, note: "Disk free"}
-  - {name: exiftool, prio: 4, note: "Image metadata"}
-  - {name: ffmpegthumbnailer, prio: 4, note: "Video thumbnails for yazi"}
-  - {name: fx, prio: 4, note: "JSON viewer"}
-  - {name: git-xet, prio: 4, note: "Git LFS over Xet"}
-  - {name: gitbutler, cask: true, prio: 4, note: "Git client"}
-  - {name: gnu-sed, prio: 4, note: "GNU sed, `gsed`"}
-  - {name: gping, prio: 4, note: "Ping with a graph"}
-  - {name: hashicorp/tap/terraform, prio: 4, note: "Terraform"}
-  - {name: hf, prio: 4, note: "Hugging Face CLI"}
-  - {name: highlight, prio: 4, note: "Syntax highlighting for previews"}
-  - {name: httpie, prio: 4, note: "HTTP client"}
-  - {name: hurl, prio: 4, note: "HTTP requests from files"}
-  - {name: idoavrah/homebrew/tftui, prio: 4, note: "Terraform TUI"}
-  - {name: imagemagick, prio: 4, note: "Images"}
-  - {name: jorgerojas26/lazysql/lazysql, prio: 4, note: "Database TUI, `lsq`"}
-  - {name: jpeg, prio: 4, note: "JPEG library"}
-  - {name: jqp, prio: 4, note: "jq playground"}
-  - {name: kdash-rs/kdash/kdash, prio: 4, note: "Kubernetes dashboard"}
-  - {name: konradsz/igrep/igrep, prio: 4, note: "Interactive grep, `ig`"}
-  - {name: librsvg, prio: 4, note: "SVG library"}
-  - {name: media-info, prio: 4, note: "Audio and video metadata"}
-  - {name: ncdu, prio: 4, note: "Disk usage"}
-  - {name: newsboat, prio: 4, note: "RSS reader"}
-  - {name: omnisharp/omnisharp-roslyn/omnisharp, prio: 4, note: "C# language server"}
-  - {name: one2nc/cloudlens/cloudlens, prio: 4, note: "AWS and GCP TUI"}
-  - {name: pgvector, prio: 4, note: "Postgres extension; no Postgres installed"}
-  - {name: php, prio: 4, note: "php-cs-fixer runs on it"}
-  - {name: php-cs-fixer, prio: 4, note: "PHP formatter"}
-  - {name: portaudio, prio: 4, note: "Audio library"}
-  - {name: prettierd, prio: 4, note: "Prettier daemon; Neovim calls prettier"}
-  - {name: python@3.11, prio: 4, note: "Python 3.11"}
-  - {name: ranger, prio: 4, note: "File manager"}
-  - {name: rsync, prio: 4, note: "Newer rsync than macOS's"}
-  - {name: skaffold, prio: 4, note: "Kubernetes dev loop"}
-  - {name: skim, cask: true, prio: 4, note: "PDF reader"}
-  - {name: skopeo, prio: 4, note: "Container image copying"}
-  - {name: stow, prio: 4, note: "Symlink manager; chezmoi replaced it"}
-  - {name: temurin@21, cask: true, prio: 4, note: "JDK 21; Java comes from SDKMAN"}
-  - {name: thefuck, prio: 4, note: "Fixes mistyped commands; fish no longer loads it"}
-  - {name: tiger-vnc, prio: 4, note: "VNC viewer"}
-  - {name: tokei, prio: 4, note: "Counts lines of code"}
-  - {name: transmission-cli, prio: 4, note: "BitTorrent"}
-  - {name: w3m, prio: 4, note: "Text web browser"}
-  - {name: yazi, prio: 4, note: "File manager"}
-  - {name: zellij, prio: 4, note: "Terminal multiplexer"}
-  - {name: zulu@17, cask: true, prio: 4, note: "JDK 17; Java comes from SDKMAN"}
+  # 4 rarely: none left after the October 2026 cleanup
