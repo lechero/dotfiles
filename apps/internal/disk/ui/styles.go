@@ -60,23 +60,6 @@ func bar(frac float64, width int, style lipgloss.Style) string {
 	return style.Render(s) + lipgloss.NewStyle().Foreground(colFaint).Render(strings.Repeat("·", width-used))
 }
 
-// volumeBar draws used against free across width cells, colored by how full it is.
-func volumeBar(used, total int64, width int) string {
-	if total <= 0 || width <= 0 {
-		return ""
-	}
-	full := float64(used) / float64(total)
-	u := min(width, int(math.Round(full*float64(width))))
-	style := sGreen
-	if full > 0.85 {
-		style = sRed
-	} else if full > 0.70 {
-		style = sYellow
-	}
-	return style.Render(strings.Repeat("█", u)) +
-		lipgloss.NewStyle().Foreground(colFaint).Render(strings.Repeat("░", width-u))
-}
-
 // truncLeft keeps the end of s, which is the telling part of a path.
 func truncLeft(s string, width int) string {
 	if width <= 0 {

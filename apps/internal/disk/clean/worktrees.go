@@ -92,7 +92,8 @@ func AuditWorktrees(ctx context.Context, env *Env, fetch bool) []worktrees.Workt
 				defer wg.Done()
 				defer func() { <-sem }()
 				if _, err := env.gitOut(ctx, repo, "remote", "get-url", "origin"); err == nil {
-					env.git(ctx, repo, "fetch", "--quiet", "--prune", "origin")
+					// If the fetch fails, verdicts use the main fetched last time.
+					_, _ = env.git(ctx, repo, "fetch", "--quiet", "--prune", "origin")
 				}
 			}()
 		}

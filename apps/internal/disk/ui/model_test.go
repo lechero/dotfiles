@@ -162,7 +162,9 @@ func cleanFlow(t *testing.T, dryRun bool) (*app, string) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	os.WriteFile(dir+"/blob", bytes.Repeat([]byte{1}, 2<<20), 0o644)
+	if err := os.WriteFile(dir+"/blob", bytes.Repeat([]byte{1}, 2<<20), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	a.tasks = []*taskState{{task: fakeTask(dir), enabled: true}}
 	root := node(a.home, 2<<20, node(".cache", 2<<20, node("fake", 2<<20)))
 	giveTree(a, root)
@@ -217,7 +219,9 @@ func TestDryRunDeletesNothing(t *testing.T) {
 func TestBlockedItemsNeverRun(t *testing.T) {
 	a := testApp(t, Options{})
 	dir := filepath.Join(a.home, ".cache", "busy")
-	os.MkdirAll(dir, 0o755)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	task := &clean.Task{
 		ID: "busy", Title: "Busy", Tier: clean.Tier1,
 		Discover: func(context.Context, *clean.Env) ([]clean.Item, error) {

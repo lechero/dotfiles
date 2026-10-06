@@ -23,7 +23,10 @@ type scanStats struct {
 func loadScanStats(dir string) scanStats {
 	var s scanStats
 	if b, err := os.ReadFile(filepath.Join(dir, "scan.json")); err == nil {
-		json.Unmarshal(b, &s)
+		// A damaged file means no previous scan, not part of one.
+		if json.Unmarshal(b, &s) != nil {
+			return scanStats{}
+		}
 	}
 	return s
 }
@@ -33,7 +36,8 @@ func saveScanStats(dir string, s scanStats) {
 		return
 	}
 	b, _ := json.Marshal(s)
-	os.WriteFile(filepath.Join(dir, "scan.json"), b, 0o644)
+	// Best effort: without it, the next scan has no time to compare with.
+	_ = os.WriteFile(filepath.Join(dir, "scan.json"), b, 0o644)
 }
 
 // freeSample is the free space seen at one moment; together they draw the trend.
@@ -65,7 +69,8 @@ func recordFree(dir string, free int64, now time.Time) []freeSample {
 			b.Write(line)
 			b.WriteByte('\n')
 		}
-		os.WriteFile(filepath.Join(dir, "free.jsonl"), []byte(b.String()), 0o644)
+		// Best effort: without it, the free-space sparkline starts over.
+		_ = os.WriteFile(filepath.Join(dir, "free.jsonl"), []byte(b.String()), 0o644)
 	}
 	return samples
 }
@@ -75,7 +80,7 @@ func loadFree(dir string) []freeSample {
 	if err != nil {
 		return nil
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only
 	var out []freeSample
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {

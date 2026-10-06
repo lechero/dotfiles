@@ -381,7 +381,7 @@ func column[T any](xs []T, f func(T) string) []string {
 // answer is kept.
 func inspect[T any](ctx context.Context, d Deps, out *[]T, args []string) {
 	s, _ := d.Docker(ctx, args...)
-	json.Unmarshal([]byte(s), out)
+	_ = json.Unmarshal([]byte(s), out)
 }
 
 // measureDisk runs df in a throwaway container: on overlay storage a
@@ -822,10 +822,10 @@ func (r Resource) ShortID() string { return shortID(r.ID) }
 
 func days(d time.Duration) string {
 	n := int(d.Hours() / 24)
-	switch {
-	case n == 7:
+	switch n {
+	case 7:
 		return "a week"
-	case n == 1:
+	case 1:
 		return "a day"
 	}
 	return fmt.Sprintf("%d days", n)

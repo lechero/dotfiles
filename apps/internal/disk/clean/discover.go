@@ -94,7 +94,8 @@ func isDir(path string) bool {
 func findDirs(ctx context.Context, root string, maxDepth int, prune map[string]bool, match func(path, name string) bool) []string {
 	var out []string
 	base := strings.Count(root, "/")
-	filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	// The callback skips what it can't read, so the walk itself can't fail.
+	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if ctx.Err() != nil {
 			return filepath.SkipAll
 		}
@@ -201,7 +202,7 @@ func installedBundleIDs(ctx context.Context, env *Env) map[string]bool {
 	var apps []string
 	for _, dir := range env.AppDirs {
 		base := strings.Count(dir, "/")
-		filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		_ = filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 			if err != nil || !d.IsDir() {
 				return nil
 			}

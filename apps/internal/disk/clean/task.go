@@ -155,7 +155,7 @@ func (e *Env) Stream(ctx context.Context, log func(string), extraEnv []string, n
 	pr, pw := io.Pipe()
 	cmd.Stdout, cmd.Stderr = pw, pw
 	if err := cmd.Start(); err != nil {
-		pw.Close()
+		_ = pw.Close() // an io.PipeWriter's Close always returns nil
 		return err
 	}
 	done := make(chan struct{})
@@ -168,10 +168,10 @@ func (e *Env) Stream(ctx context.Context, log func(string), extraEnv []string, n
 				log(line)
 			}
 		}
-		io.Copy(io.Discard, pr) // keep draining if a line was too long
+		_, _ = io.Copy(io.Discard, pr) // keep draining if a line was too long
 	}()
 	err := cmd.Wait()
-	pw.Close()
+	_ = pw.Close()
 	<-done
 	return err
 }

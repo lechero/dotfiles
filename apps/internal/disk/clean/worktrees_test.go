@@ -41,15 +41,21 @@ func repoWithWorktrees(t *testing.T) (*Env, string, map[string]worktrees.Worktre
 	env.Home, env.Guard = home, Guard{Home: home}
 	env.StateDir, env.LogDir = home+"/state", home+"/logs"
 	repo := home + "/projects/app"
-	os.MkdirAll(repo, 0o755)
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	tgit(t, repo, "init", "-q", "-b", "main")
-	os.WriteFile(repo+"/README.md", []byte("hi\n"), 0o644)
+	if err := os.WriteFile(repo+"/README.md", []byte("hi\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	tgit(t, repo, "add", ".")
 	tgit(t, repo, "commit", "-q", "-m", "initial")
 	for _, name := range []string{"merged", "later-dirty", "gone"} {
 		tgit(t, repo, "worktree", "add", "-q", "-b", "claude/"+name, repo+"/.claude/worktrees/"+name)
 	}
-	os.RemoveAll(repo + "/.claude/worktrees/gone")
+	if err := os.RemoveAll(repo + "/.claude/worktrees/gone"); err != nil {
+		t.Fatal(err)
+	}
 
 	got := map[string]worktrees.Worktree{}
 	for _, w := range AuditWorktrees(context.Background(), env, false) {
@@ -69,7 +75,9 @@ func TestWorktreeRemovalKeepsBranchesAndNeverForces(t *testing.T) {
 	}
 
 	// A change lands after the audit; git must refuse, and nothing may force it.
-	os.WriteFile(dirty.Path+"/README.md", []byte("edited\n"), 0o644)
+	if err := os.WriteFile(dirty.Path+"/README.md", []byte("edited\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	task := WorktreeTask(false)
 	sels := []Selection{{Task: task, Items: []Item{

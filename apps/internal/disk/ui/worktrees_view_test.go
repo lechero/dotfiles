@@ -47,15 +47,21 @@ func worktreeApp(t *testing.T, opts Options) (*app, string) {
 	a.update(tea.WindowSizeMsg{Width: 140, Height: 40})
 
 	repo := home + "/projects/app"
-	os.MkdirAll(repo, 0o755)
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	uiGit(t, repo, "init", "-q", "-b", "main")
-	os.WriteFile(repo+"/README.md", []byte("hi\n"), 0o644)
+	if err := os.WriteFile(repo+"/README.md", []byte("hi\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	uiGit(t, repo, "add", ".")
 	uiGit(t, repo, "commit", "-q", "-m", "initial")
 	for _, name := range []string{"merged", "dirty"} {
 		uiGit(t, repo, "worktree", "add", "-q", "-b", "claude/"+name, repo+"/.claude/worktrees/"+name)
 	}
-	os.WriteFile(repo+"/.claude/worktrees/dirty/README.md", []byte("work in progress\n"), 0o644)
+	if err := os.WriteFile(repo+"/.claude/worktrees/dirty/README.md", []byte("work in progress\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	drive(t, a, a.auditWorktrees(false))
 	return a, repo
 }

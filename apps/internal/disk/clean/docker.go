@@ -75,7 +75,10 @@ func AuditDocker(ctx context.Context, env *Env) docker.Report {
 func loadComposeDirs(dir string) map[string][]string {
 	m := map[string][]string{}
 	if b, err := os.ReadFile(filepath.Join(dir, "compose-projects.json")); err == nil {
-		json.Unmarshal(b, &m)
+		// A damaged file is no record at all, rather than part of one.
+		if json.Unmarshal(b, &m) != nil {
+			return map[string][]string{}
+		}
 	}
 	return m
 }
@@ -97,7 +100,8 @@ func saveComposeDirs(dir string, seen, now map[string][]string) {
 		return
 	}
 	b, _ := json.Marshal(seen)
-	os.WriteFile(filepath.Join(dir, "compose-projects.json"), b, 0o644)
+	// Best effort: without the file, compose projects just go unnamed.
+	_ = os.WriteFile(filepath.Join(dir, "compose-projects.json"), b, 0o644)
 }
 
 var composeFiles = []string{"compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"}
@@ -141,7 +145,7 @@ func firstMatch(path string, re *regexp.Regexp) string {
 	if err != nil {
 		return ""
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }() // read-only
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		if m := re.FindStringSubmatch(sc.Text()); m != nil {

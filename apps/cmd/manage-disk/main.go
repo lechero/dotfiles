@@ -58,7 +58,7 @@ func main() {
 			takesValue = !strings.Contains(name, "=") && name == "target"
 		}
 	}
-	fs.Parse(flagArgs)
+	_ = fs.Parse(flagArgs) // ExitOnError: a bad flag exits inside Parse
 	if *target <= 0 {
 		fmt.Fprintln(os.Stderr, "manage-disk: --target is GiB of free space, more than 0")
 		os.Exit(2)

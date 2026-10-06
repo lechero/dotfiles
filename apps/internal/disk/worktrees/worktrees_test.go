@@ -40,7 +40,9 @@ func mustGit(t *testing.T, dir string, args ...string) string {
 
 func write(t *testing.T, p, content string) {
 	t.Helper()
-	os.MkdirAll(filepath.Dir(p), 0o755)
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -68,7 +70,9 @@ func newFixture(t *testing.T) fixture {
 	}
 	origin := filepath.Join(home, "origin.git")
 	repo := filepath.Join(home, "projects", "app")
-	os.MkdirAll(repo, 0o755)
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	mustGit(t, home, "init", "-q", "--bare", "-b", "main", origin)
 	mustGit(t, repo, "init", "-q", "-b", "main")
 	commit(t, repo, "README.md", "hello\n", "initial")
@@ -134,7 +138,9 @@ func newFixture(t *testing.T) fixture {
 	commit(t, p, "e.txt", "e\n", "local only")
 
 	p = add("gone")
-	os.RemoveAll(p)
+	if err := os.RemoveAll(p); err != nil {
+		t.Fatal(err)
+	}
 
 	p = add("locked")
 	mustGit(t, repo, "worktree", "lock", p)

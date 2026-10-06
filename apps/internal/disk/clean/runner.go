@@ -157,8 +157,9 @@ func openRunLog(env *Env, s *Summary) (logf func(string, ...any), closeLog func(
 	return func(format string, args ...any) {
 			fmt.Fprintf(w, "%s %s\n", env.Now().Format("15:04:05"), fmt.Sprintf(format, args...))
 		}, func() {
-			w.Flush()
-			f.Close()
+			// The log is a convenience: failing to write it mustn't fail the run.
+			_ = w.Flush()
+			_ = f.Close()
 		}
 }
 
@@ -190,8 +191,9 @@ func recordHistory(env *Env, s Summary) {
 	if err != nil {
 		return
 	}
-	defer f.Close()
-	f.Write(append(b, '\n'))
+	// History only feeds the totals, so a lost entry costs one run's numbers.
+	defer func() { _ = f.Close() }()
+	_, _ = f.Write(append(b, '\n'))
 }
 
 // LastRun returns the most recent real run, or nil when there is none.

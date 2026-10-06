@@ -239,14 +239,14 @@ func (a *app) doneView(h int) string {
 	took := human.Duration(s.Ended.Sub(s.Started))
 	if s.DryRun {
 		b.WriteString(sBold.Render("Dry run finished in "+took) + "\n")
-		b.WriteString(fmt.Sprintf("Would handle %s, about %s. Nothing was changed.\n", plural(len(s.Cleaned), "item"), human.Bytes(s.Estimated)))
+		fmt.Fprintf(&b, "Would handle %s, about %s. Nothing was changed.\n", plural(len(s.Cleaned), "item"), human.Bytes(s.Estimated))
 	} else {
 		b.WriteString(sBold.Render("Done in "+took) + "\n")
 		if r.owner == tabDocker { // what changed is inside Docker's VM; the Mac sees it later
 			b.WriteString(a.dkFreedLine(s.DryRun) + "\n")
 		} else {
-			b.WriteString(fmt.Sprintf("Free space %s → %s  %s\n", human.Bytes(s.FreeBefore), human.Bytes(s.FreeAfter),
-				sGreen.Render("(+"+human.Bytes(max(0, s.Freed()))+")")))
+			fmt.Fprintf(&b, "Free space %s → %s  %s\n", human.Bytes(s.FreeBefore), human.Bytes(s.FreeAfter),
+				sGreen.Render("(+"+human.Bytes(max(0, s.Freed()))+")"))
 		}
 	}
 	verb := "done"

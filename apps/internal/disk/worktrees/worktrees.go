@@ -377,7 +377,8 @@ func judge(w *Worktree, d Deps) {
 	if len(w.Ignored) > 0 {
 		soft = append(soft, "ignored files worth a look: "+strings.Join(first(w.Ignored, 3), ", "))
 	}
-	if w.Unpushed > 0 && !(w.PR != nil && w.PR.State == "MERGED" && w.HeadInPR) {
+	mergedWithHead := w.PR != nil && w.PR.State == "MERGED" && w.HeadInPR
+	if w.Unpushed > 0 && !mergedWithHead {
 		soft = append(soft, plural(w.Unpushed, "commit")+" on no remote")
 	}
 	if w.PR != nil && w.PR.State == "OPEN" {

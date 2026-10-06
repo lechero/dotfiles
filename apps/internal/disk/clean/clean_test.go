@@ -118,8 +118,7 @@ func TestParseProcs(t *testing.T) {
 }
 
 func TestBuildCachesSkipNodeModulesAndRunningServers(t *testing.T) {
-	var env *Env
-	env = testEnv(t, nil)
+	env := testEnv(t, nil)
 	h := env.Home
 	put(t, h+"/projects/a/apps/web/.next/cache.bin", 1<<20)
 	put(t, h+"/projects/a/node_modules/pkg/.next/x", 1<<20) // inside node_modules: never
@@ -152,13 +151,14 @@ func TestPuppeteerKeepsNewest(t *testing.T) {
 }
 
 func TestBrowserAndNpxInUseAreBlocked(t *testing.T) {
-	var env *Env
-	env = testEnv(t, nil)
+	env := testEnv(t, nil)
 	h := env.Home
 	put(t, h+"/Library/Caches/Google/Chrome/x", 1<<20)
 	put(t, h+"/Library/Caches/Firefox/x", 1<<20)
 	put(t, h+"/.npm/_npx/aaa/package.json", 0)
-	os.WriteFile(h+"/.npm/_npx/aaa/package.json", []byte(`{"dependencies":{"mcp-remote":"^1"}}`), 0o644)
+	if err := os.WriteFile(h+"/.npm/_npx/aaa/package.json", []byte(`{"dependencies":{"mcp-remote":"^1"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	put(t, h+"/.npm/_npx/aaa/node_modules/mcp-remote/index.js", 1<<20)
 	put(t, h+"/.npm/_npx/bbb/x", 1<<20)
 	env.SnapshotFn = func(context.Context) (Procs, error) {
@@ -191,9 +191,13 @@ func TestNodeVersionPolicy(t *testing.T) {
 	put(t, h+"/.local/share/nvm/v22.9.0/lib/node_modules/npm/package.json", 10)
 	put(t, h+"/.local/share/nvm/v20.10.0/lib/node_modules/pnpm/package.json", 10) // package managers don't count
 	put(t, h+"/.config/fish/fish_variables", 0)
-	os.WriteFile(h+"/.config/fish/fish_variables", []byte("# fish\nSETUVAR nvm_default_version:20\n"), 0o644)
+	if err := os.WriteFile(h+"/.config/fish/fish_variables", []byte("# fish\nSETUVAR nvm_default_version:20\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	put(t, h+"/projects/old/.nvmrc", 0)
-	os.WriteFile(h+"/projects/old/.nvmrc", []byte("v18.17.1\n"), 0o644)
+	if err := os.WriteFile(h+"/projects/old/.nvmrc", []byte("v18.17.1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	items := discover(t, nodeVersionsTask(), env)
 	want := map[string]bool{
@@ -224,9 +228,11 @@ func TestOrphanedCachesUseBundleIDs(t *testing.T) {
 	env := testEnv(t, nil)
 	h := env.Home
 	put(t, h+"/Applications/Foo.app/Contents/Info.plist", 0)
-	os.WriteFile(h+"/Applications/Foo.app/Contents/Info.plist", []byte(`<?xml version="1.0" encoding="UTF-8"?>
+	if err := os.WriteFile(h+"/Applications/Foo.app/Contents/Info.plist", []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict><key>CFBundleIdentifier</key><string>com.example.Foo</string></dict></plist>`), 0o644)
+<plist version="1.0"><dict><key>CFBundleIdentifier</key><string>com.example.Foo</string></dict></plist>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	big := 21 << 20
 	put(t, h+"/Library/Caches/com.example.Foo/x", big)           // installed
 	put(t, h+"/Library/Caches/com.example.foo.helper/x", big)    // installed app's helper
