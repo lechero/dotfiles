@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Install the fish plugins listed in ~/.config/fish/fish_plugins with fisher,
+# and run again whenever that list changes:
+# fish_plugins sha256 {{ include "dot_config/fish/fish_plugins" | sha256sum }}
+set -euo pipefail
+
+command -v fish >/dev/null 2>&1 || exit 0
+
+# The first run bootstraps fisher from a pinned release, checked against its
+# checksum. After that, fish_plugins installs fisher like any other plugin.
+fisher_url=https://raw.githubusercontent.com/jorgebucaran/fisher/4.4.8/functions/fisher.fish
+fisher_sha256=0fb6c81ae3003e95b5671766fa6c25c3597066e29965b7772f6c1b007387356d
+
+if fish -c 'functions -q fisher'; then
+  fish -c 'fisher update'
+else
+  fisher_script=$(mktemp)
+  trap 'rm -f "$fisher_script"' EXIT
+  curl -fsSL "$fisher_url" -o "$fisher_script"
+  echo "$fisher_sha256  $fisher_script" | shasum -a 256 -c - >/dev/null
+  # shellcheck disable=SC2016 # $argv is expanded by fish, not bash
+  fish -c 'source $argv[1]; and fisher update' "$fisher_script"
+fi

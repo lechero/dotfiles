@@ -4,3 +4,8 @@
 **/plugged/
 **/plugged/**/*
 **/yankring_history*.txt
+
+# Fish: per-machine state, local secrets, and the plugins fisher installs
+.config/fish/fish_variables
+.config/fish/secrets.fish
+.config/fish/plugins
