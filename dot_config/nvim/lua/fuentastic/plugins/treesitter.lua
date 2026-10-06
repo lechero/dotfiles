@@ -26,6 +26,15 @@ local parsers = {
   'tsx',
   'css',
   'scss',
+  -- jsp: this config's own parser (tree-sitter-jsp/), which hands the markup to html and the
+  -- scriptlets to java
+  'jsp',
+}
+
+-- Parsers with an indentexpr of their own. nvim-treesitter's goes by the smallest tree around a
+-- line, which around scriptlets is the wrong one of JSP's java and html.
+local indentexprs = {
+  jsp = "v:lua.require'fuentastic.jsp_indent'.indentexpr()",
 }
 
 return {
@@ -34,6 +43,18 @@ return {
   lazy = false, -- the main branch can't be lazy-loaded
   build = ':TSUpdate',
   config = function()
+    -- Nothing upstream parses JSP. nvim-treesitter builds the parser in place; after changing the
+    -- grammar, `:TSInstall! jsp`.
+    vim.api.nvim_create_autocmd('User', {
+      group = vim.api.nvim_create_augroup('fuentastic-treesitter-parsers', { clear = true }),
+      pattern = 'TSUpdate',
+      callback = function()
+        require('nvim-treesitter.parsers').jsp = {
+          install_info = { path = vim.fn.stdpath('config') .. '/tree-sitter-jsp' },
+        }
+      end,
+    })
+
     -- Skips what's already installed. Parsers and their queries land in stdpath('data')/site,
     -- which is ahead of the plugin dir on the runtimepath.
     require('nvim-treesitter').install(parsers)
@@ -49,7 +70,7 @@ return {
       callback = function(args)
         -- Fails quietly while a parser is still installing on first start.
         if pcall(vim.treesitter.start, args.buf) then
-          vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+          vim.bo[args.buf].indentexpr = indentexprs[args.match] or "v:lua.require'nvim-treesitter'.indentexpr()"
         end
       end,
     })
