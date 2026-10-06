@@ -139,6 +139,8 @@ while the IDE is open.
 
 ## Notes
 
+- A project whose Maven build runs checkstyle gets its violations while editing, with the build's
+  own config and suppressions: see [linting.md](linting.md#checkstyle).
 - Opening a new `.java` file writes it to disk right away. nvim-jdtls does this because jdtls
   ignores files that don't exist yet.
 - Each project gets its own jdtls workspace in `~/.cache/nvim/jdtls/<project>-<hash>`.

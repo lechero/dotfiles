@@ -12,6 +12,7 @@ several references it takes the one under the cursor, else the first.
 | `data-sly-include="partials/header.html"` | That script |
 | `data-sly-call="${tpl.content}"` | The file `data-sly-use.tpl` loads, at `data-sly-template.content` |
 | `data-sly-call="${content}"` | `data-sly-template.content` in this file |
+| `${clientlib.css @ categories='site.base'}` (or a list) | The clientlib with that category ([aem.md](aem.md#clientlibs)) |
 | Nothing of the above | Vim's own `gd` |
 
 Paths resolve like Sling resolves them: relative to the current script first, then under `/apps` and
