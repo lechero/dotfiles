@@ -1,5 +1,7 @@
+-- The community fork of epwalsh/obsidian.nvim: maintained, and its note and tag completion is an
+-- in-process language server, so blink.cmp's lsp source offers it after `[[` and `#`.
 return {
-  'epwalsh/obsidian.nvim',
+  'obsidian-nvim/obsidian.nvim',
   version = '*', -- recommended, use latest release instead of latest commit
   lazy = true,
   ft = 'markdown',
@@ -11,10 +13,8 @@ return {
   --   "BufReadPre path/to/my-vault/*.md",
   --   "BufNewFile path/to/my-vault/*.md",
   -- },
-  dependencies = {
-    'nvim-lua/plenary.nvim',
-  },
   opts = {
+    legacy_commands = false, -- `:Obsidian new`, not `:ObsidianNew` (removed in 4.0)
     workspaces = {
       {
         name = 'personal',
