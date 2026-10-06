@@ -44,7 +44,7 @@ against the matching JDK.
 
 ## Keymaps
 
-Java buffers (on top of the usual LSP maps: `gd`, `gr`, `gI`, `<leader>rn`, `<leader>ca`, ...):
+Java buffers (on top of the usual LSP maps: `gd`, `grr`, `gI`, `<leader>rn`, `<leader>ca`, ...):
 
 | Keys | Action |
 | --- | --- |

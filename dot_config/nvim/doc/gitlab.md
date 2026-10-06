@@ -52,7 +52,7 @@ The usual LSP keys work across the included files:
 | Keys | On | Does |
 | --- | --- | --- |
 | `gd` | `extends: .base`, `include: local: ...`, `needs: - job: build` | Opens the job or file |
-| `gr` | A job | Where it's extended or needed |
+| `grr` | A job | Where it's extended or needed |
 | `K` | A job | The job as GitLab sees it, `extends` merged in |
 | `<leader>rn` | A job | Renames it everywhere |
 
