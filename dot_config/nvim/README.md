@@ -137,6 +137,11 @@ requirements, keymaps and troubleshooting.
 Vue 3 single-file components (vue_ls + `ts_ls`, treesitter, prettier) are set up out of the box;
 see [doc/vue.md](doc/vue.md) for requirements, formatting and troubleshooting.
 
+### JSP development
+
+JSP pages (treesitter highlighting with HTML and Java, `gd`, indent, JSP comments) are set up out
+of the box; see [doc/jsp.md](doc/jsp.md) for what `gd` resolves and how the indent works.
+
 ### HTL (AEM components)
 
 `gd` in an AEM component script opens the component, script, Java class or template the line

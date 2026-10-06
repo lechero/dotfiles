@@ -1,0 +1,150 @@
+================================================================================
+Tags around template text
+================================================================================
+<%@ page import="java.util.List" %>
+<p><%= name %></p>
+<% if (ok) { %>yes<% } %>
+
+--------------------------------------------------------------------------------
+
+(document
+  (directive
+    name: (directive_name)
+    (attribute
+      name: (attribute_name)
+      value: (attribute_value)))
+  (content)
+  (expression
+    (code))
+  (content)
+  (scriptlet
+    (code))
+  (content)
+  (scriptlet
+    (code))
+  (content))
+
+================================================================================
+Directives without spaces, single quotes, attributes on several lines
+================================================================================
+<%@include file="/libs/foundation/global.jsp"%>
+<%@ taglib prefix='c'
+    uri='http://java.sun.com/jsp/jstl/core' %>
+
+--------------------------------------------------------------------------------
+
+(document
+  (directive
+    name: (directive_name)
+    (attribute
+      name: (attribute_name)
+      value: (attribute_value)))
+  (content)
+  (directive
+    name: (directive_name)
+    (attribute
+      name: (attribute_name)
+      value: (attribute_value))
+    (attribute
+      name: (attribute_name)
+      value: (attribute_value)))
+  (content))
+
+================================================================================
+Comments end at the first --%>
+================================================================================
+<%-- <% old(); %> ${old} --%>
+<%-- a - b -- c ---%>
+
+--------------------------------------------------------------------------------
+
+(document
+  (comment)
+  (content)
+  (comment)
+  (content))
+
+================================================================================
+Declarations and % in Java
+================================================================================
+<%! private int odd(int n) { return n % 2; } %><%%>
+
+--------------------------------------------------------------------------------
+
+(document
+  (declaration
+    (code))
+  (scriptlet)
+  (content))
+
+================================================================================
+EL expressions
+================================================================================
+${not empty param.q ? fn:escapeXml(param.q) : 'none'}
+#{bean.value} ${list[0].size() gt 1.5e3} ${x -> x + 1} ${{1, 2}}
+
+--------------------------------------------------------------------------------
+
+(document
+  (el_expression
+    (keyword_operator)
+    (keyword_operator)
+    (identifier)
+    (identifier)
+    (operator)
+    (identifier)
+    (identifier)
+    (identifier)
+    (identifier)
+    (string))
+  (content)
+  (el_expression
+    (identifier)
+    (identifier))
+  (content)
+  (el_expression
+    (identifier)
+    (number)
+    (identifier)
+    (keyword_operator)
+    (number))
+  (content)
+  (el_expression
+    (identifier)
+    (operator)
+    (identifier)
+    (operator)
+    (number))
+  (content)
+  (el_expression
+    (el_braces
+      (number)
+      (number)))
+  (content))
+
+================================================================================
+EL in attributes, escaped EL and lone $ and #
+================================================================================
+<a href="${ctx}/x">\${literal} $5 #1 #fff</a>
+
+--------------------------------------------------------------------------------
+
+(document
+  (content)
+  (el_expression
+    (identifier))
+  (content))
+
+================================================================================
+A } inside an EL string
+================================================================================
+${a eq "}"}
+
+--------------------------------------------------------------------------------
+
+(document
+  (el_expression
+    (identifier)
+    (keyword_operator)
+    (string))
+  (content))
