@@ -8,6 +8,7 @@ Fish 4 config, applied by chezmoi to `~/.config/fish`.
 | --- | --- |
 | `config.fish` | Interactive setup: vi key bindings, the prompt, zoxide, jump, fzf keys, switching Node on `.nvmrc`. |
 | `conf.d/00-env.fish` | `PATH` and environment variables, for every shell including scripts. |
+| `conf.d/05-tmux.fish` | Starts tmux in a new terminal window, attaching to the most recent session. |
 | `conf.d/10-plugins.fish` | Loads the plugins fisher installed into `plugins/`. |
 | `conf.d/abbr.fish` | Abbreviations, such as `gs` for `git status` and `...` for `cd ../../`. |
 | `conf.d/colors.fish` | Syntax highlighting colors. |
