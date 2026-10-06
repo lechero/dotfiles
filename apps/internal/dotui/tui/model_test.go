@@ -14,6 +14,12 @@ import (
 
 func testModel(t *testing.T) Model {
 	t.Helper()
+	return testModelWith(t, nil)
+}
+
+// testModelWith is testModel with newDisk behind the Disk tab.
+func testModelWith(t *testing.T, newDisk func() Disk) Model {
+	t.Helper()
 	c, err := catalog.Parse([]byte(`
 packages:
   - {name: fish, prio: 1, note: Shell}
@@ -25,7 +31,7 @@ packages:
 	if err != nil {
 		t.Fatal(err)
 	}
-	var model tea.Model = New(Config{Catalog: c, File: "packages.yaml", Self: "dotui"})
+	var model tea.Model = New(Config{Catalog: c, File: "packages.yaml", Self: "dotui", NewDisk: newDisk})
 	model, _ = model.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
 	model, _ = model.Update(brewLoadedMsg{inv: brew.Inventory{
 		Formulae: map[string]bool{"fish": true, "jq": true},

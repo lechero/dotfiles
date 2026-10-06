@@ -7,6 +7,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/clean"
 	"github.com/lechero/dotfiles/apps/internal/disk/scan"
@@ -211,5 +212,29 @@ func TestFreeSpaceTrend(t *testing.T) {
 	}
 	if got := sparkline(s, 10); got != "▁▃█" {
 		t.Errorf("sparkline = %q", got)
+	}
+}
+
+func TestEmbeddedLeavesTabAndItsNameToTheHost(t *testing.T) {
+	a := testApp(t, Options{Embedded: true})
+	m := Model{a}
+	if out := ansi.Strip(m.Content()); strings.Contains(out, "manage-disk") {
+		t.Errorf("an embedded view shouldn't name itself:\n%s", out)
+	}
+	press(t, a, "tab")
+	if a.tab != tabOverview {
+		t.Errorf("tab belongs to the host when embedded, but it moved to tab %d", a.tab)
+	}
+	if strings.Contains(screen(a), "next tab") {
+		t.Error("the help shouldn't offer tab when embedded")
+	}
+
+	giveTree(a, mapTree(a.home))
+	if m.TakesKeys() {
+		t.Error("nothing has the keyboard yet")
+	}
+	press(t, a, "3", "/")
+	if !m.TakesKeys() {
+		t.Error("the explorer's filter field has the keyboard")
 	}
 }

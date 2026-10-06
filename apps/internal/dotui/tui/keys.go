@@ -18,7 +18,7 @@ type keyMap struct {
 func newKeyMap() keyMap {
 	return keyMap{
 		Quit:       key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
-		SwitchTab:  key.NewBinding(key.WithKeys("tab", "shift+tab"), key.WithHelp("tab", "switch view")),
+		SwitchTab:  key.NewBinding(key.WithKeys("tab", "shift+tab"), key.WithHelp("tab/⇧tab", "switch view")),
 		Refresh:    key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "refresh")),
 		Prio:       key.NewBinding(key.WithKeys("1", "2", "3", "4"), key.WithHelp("1-4", "priorities up to")),
 		Missing:    key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "missing only")),

@@ -1,5 +1,6 @@
 // Package tui is dotui's interactive view: the Homebrew packages with their
-// priorities and install state, and what `chezmoi apply` would change.
+// priorities and install state, what `chezmoi apply` would change, and where
+// the disk space goes.
 package tui
 
 import (
@@ -30,6 +31,9 @@ type Config struct {
 	Source string
 	// Self is this executable, which runs installs and waits afterwards.
 	Self string
+	// NewDisk starts the Disk tab's analyzer when the tab first opens; nil
+	// leaves the tab out.
+	NewDisk func() Disk
 }
 
 type tab int
@@ -37,6 +41,7 @@ type tab int
 const (
 	packagesTab tab = iota
 	dotfilesTab
+	diskTab
 )
 
 // headerHeight is the number of lines above the list.
@@ -66,9 +71,10 @@ type Model struct {
 	keys   keyMap
 	styles *styles
 
-	tab         tab
-	maxPrio     int
-	missingOnly bool
+	tab           tab
+	width, height int
+	maxPrio       int
+	missingOnly   bool
 
 	inv         *brew.Inventory
 	brewErr     error
@@ -81,6 +87,8 @@ type Model struct {
 	packages list.Model
 	dotfiles list.Model
 	spinner  spinner.Model
+
+	disk Disk // nil until the Disk tab first opens
 }
 
 // New builds the view. It starts loading when the program runs it.
@@ -134,25 +142,32 @@ func loadChezmoi(source string) tea.Cmd {
 	}
 }
 
-// Update handles a message.
+// Update handles a message. The analyzer on the Disk tab gets everything
+// that isn't dotui's own, even while another tab is open, so a scan keeps
+// going in the background.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var diskCmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		m.width, m.height = msg.Width, msg.Height
 		m.packages.SetSize(msg.Width, msg.Height-headerHeight)
 		m.dotfiles.SetSize(msg.Width, msg.Height-headerHeight)
-		return m, nil
+		cmd := m.updateDisk(m.diskSize())
+		return m, cmd
 
 	case tea.BackgroundColorMsg:
 		m.applyStyles(msg.IsDark())
-		return m, nil
+		cmd := m.updateDisk(msg)
+		return m, cmd
 
 	case spinner.TickMsg:
+		diskCmd = m.updateDisk(msg)
 		if !m.brewLoading && !m.chezmoiLoading {
-			return m, nil
+			return m, diskCmd
 		}
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
-		return m, cmd
+		return m, tea.Batch(cmd, diskCmd)
 
 	case brewLoadedMsg:
 		m.brewLoading = false
@@ -179,6 +194,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tea.KeyPressMsg:
+		if m.tab == diskTab {
+			cmd := m.diskKey(msg)
+			return m, cmd
+		}
 		if msg.String() == "ctrl+c" {
 			return m, tea.Quit
 		}
@@ -188,15 +207,61 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return model, cmd
 			}
 		}
+		cmd := m.updateList(m.tab, msg)
+		return m, cmd
+
+	case tea.MouseMsg: // the mouse is only on for the Disk tab
+		if m.tab == diskTab {
+			cmd := m.diskMouse(msg)
+			return m, cmd
+		}
+		return m, nil
+
+	case list.FilterMatchesMsg: // for the list being filtered, on the tab in front
+		if m.tab == diskTab {
+			cmd := m.updateDisk(msg)
+			return m, cmd
+		}
+		cmd := m.updateList(m.tab, msg)
+		return m, cmd
+
+	default:
+		diskCmd = m.updateDisk(msg)
 	}
 
+	// Anything else, like a status message timing out, may be for either list.
+	cmd := tea.Batch(diskCmd, m.updateList(packagesTab, msg), m.updateList(dotfilesTab, msg))
+	return m, cmd
+}
+
+// updateList passes msg to the list on tab t, if it has one.
+func (m *Model) updateList(t tab, msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
-	if m.tab == packagesTab {
+	switch t {
+	case packagesTab:
 		m.packages, cmd = m.packages.Update(msg)
-	} else {
+	case dotfilesTab:
 		m.dotfiles, cmd = m.dotfiles.Update(msg)
 	}
-	return m, cmd
+	return cmd
+}
+
+// switchTab moves to the next tab, or the previous one.
+func (m *Model) switchTab(back bool) tea.Cmd {
+	n := tab(len(m.tabNames()))
+	next := (m.tab + 1) % n
+	if back {
+		next = (m.tab + n - 1) % n
+	}
+	return m.setTab(next)
+}
+
+func (m *Model) setTab(t tab) tea.Cmd {
+	m.tab = t
+	if t == diskTab {
+		return m.openDisk()
+	}
+	return nil
 }
 
 func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
@@ -204,8 +269,8 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit, true
 	case key.Matches(msg, m.keys.SwitchTab):
-		m.tab = 1 - m.tab
-		return m, nil, true
+		cmd := m.switchTab(msg.String() == "shift+tab")
+		return m, cmd, true
 	case key.Matches(msg, m.keys.Refresh):
 		cmd := m.reload()
 		return m, cmd, true
@@ -321,29 +386,75 @@ func (m Model) active() list.Model {
 	return m.dotfiles
 }
 
-// View renders the header and the active list.
+// View renders the tab line, then the Disk tab's analyzer or a summary line
+// and the active list. The mouse is on for the Disk tab only, where it picks
+// blocks on the map; elsewhere the terminal keeps selecting text.
 func (m Model) View() tea.View {
-	header := lipgloss.JoinVertical(lipgloss.Left, m.tabsLine(), m.summaryLine())
-	v := tea.NewView(lipgloss.JoinVertical(lipgloss.Left, header, m.active().View()))
+	var content string
+	if m.tab == diskTab {
+		body := m.styles.dim.Render(" Starting the disk analyzer…")
+		if m.disk != nil {
+			body = m.disk.Content()
+		}
+		content = lipgloss.JoinVertical(lipgloss.Left, m.tabsLine(), body)
+	} else {
+		content = lipgloss.JoinVertical(lipgloss.Left, m.tabsLine(), m.summaryLine(), m.active().View())
+	}
+	v := tea.NewView(content)
 	v.AltScreen = true
 	v.WindowTitle = "dotui"
+	if m.tab == diskTab {
+		v.MouseMode = tea.MouseModeCellMotion
+	}
 	return v
+}
+
+func (m Model) tabNames() []string {
+	names := []string{"Packages", "Dotfiles"}
+	if m.cfg.NewDisk != nil {
+		names = append(names, "Disk")
+	}
+	return names
+}
+
+func (m Model) tabStyle(t tab) lipgloss.Style {
+	if t == m.tab {
+		return m.styles.tabActive
+	}
+	return m.styles.tabInactive
 }
 
 func (m Model) tabsLine() string {
 	tabs := []string{m.styles.title.Render("dotui")}
-	for t, name := range []string{"Packages", "Dotfiles"} {
-		if tab(t) == m.tab {
-			tabs = append(tabs, m.styles.tabActive.Render(name))
-		} else {
-			tabs = append(tabs, m.styles.tabInactive.Render(name))
-		}
+	for t, name := range m.tabNames() {
+		tabs = append(tabs, m.tabStyle(tab(t)).Render(name))
 	}
 	line := strings.Join(tabs, " ")
 	if m.brewLoading || m.chezmoiLoading {
 		line += "  " + m.spinner.View() + m.styles.dim.Render(" checking…")
 	}
+	// The analyzer's own help can't mention tab, which is dotui's.
+	if m.tab == diskTab {
+		hint := m.styles.dim.Render("tab switch view ")
+		if gap := m.width - lipgloss.Width(line) - lipgloss.Width(hint); gap > 1 {
+			line += strings.Repeat(" ", gap) + hint
+		}
+	}
 	return line
+}
+
+// tabAt returns the tab whose name is at column x of the tab line.
+func (m Model) tabAt(x int) (tab, bool) {
+	pos := lipgloss.Width(m.styles.title.Render("dotui"))
+	for t, name := range m.tabNames() {
+		pos++ // the space before each name
+		w := lipgloss.Width(m.tabStyle(tab(t)).Render(name))
+		if x >= pos && x < pos+w {
+			return tab(t), true
+		}
+		pos += w
+	}
+	return 0, false
 }
 
 func (m Model) summaryLine() string {

@@ -15,6 +15,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/lechero/dotfiles/apps/internal/disk/clean"
+	diskui "github.com/lechero/dotfiles/apps/internal/disk/ui"
 	"github.com/lechero/dotfiles/apps/internal/dotui/brew"
 	"github.com/lechero/dotfiles/apps/internal/dotui/catalog"
 	"github.com/lechero/dotfiles/apps/internal/dotui/tui"
@@ -30,11 +32,13 @@ const (
 // defaultPrio is how far check and install go when --prio isn't given.
 const defaultPrio = 2
 
-const usage = `dotui shows the Homebrew packages this setup needs and the state of the
-dotfiles, and installs or applies what's missing.
+const usage = `dotui shows the Homebrew packages this setup needs, the state of the
+dotfiles, and where the disk space goes. It installs or applies what's
+missing, and cleans what's safe to clean.
 
 Usage:
-  dotui [--file F] [--source DIR]          open the interactive view
+  dotui [--file F] [--source DIR] [--disk-dry-run]
+                                           open the interactive view
   dotui list [--prio N] [--missing]        list packages and whether they're installed
   dotui check [--prio N]                   fail if a package up to priority N is missing
   dotui install [--prio N] [name ...]      install what's missing up to priority N,
@@ -48,6 +52,8 @@ Flags:
                 chezmoi's source directory)
   --source DIR  chezmoi source directory for the dotfiles view
                 (default: chezmoi's own)
+  --disk-dry-run
+                in the disk view: show what a clean would do, delete nothing
 `
 
 // errUsage marks errors in how dotui was called.
@@ -290,6 +296,7 @@ func runExecThenWait(ctx context.Context, args []string, stdin io.Reader, stdout
 func runTUI(ctx context.Context, args []string) error {
 	fs, file := newFlags("dotui")
 	source := fs.String("source", "", "chezmoi source directory")
+	diskDryRun := fs.Bool("disk-dry-run", false, "disk view: delete nothing")
 	if err := parse(fs, args); err != nil {
 		return err
 	}
@@ -304,7 +311,14 @@ func runTUI(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	m := tui.New(tui.Config{Catalog: c, File: path, Source: *source, Self: self})
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	newDisk := func() tui.Disk {
+		return diskui.New(clean.NewEnv(home), diskui.Options{DryRun: *diskDryRun, Embedded: true})
+	}
+	m := tui.New(tui.Config{Catalog: c, File: path, Source: *source, Self: self, NewDisk: newDisk})
 	_, err = tea.NewProgram(m, tea.WithContext(ctx)).Run()
 	if errors.Is(err, tea.ErrProgramKilled) && ctx.Err() != nil {
 		return nil

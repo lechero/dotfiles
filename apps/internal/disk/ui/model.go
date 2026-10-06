@@ -30,6 +30,9 @@ type Options struct {
 	DryRun         bool  // delete and run nothing; show what would happen
 	IncludePrivate bool  // also scan Desktop, Documents, Downloads… (macOS may ask)
 	DockerTarget   int64 // free space the Docker tab plans for (docker.DefaultTarget when 0)
+	// Embedded is for showing the interface inside another program, through
+	// Content: it leaves out its own name and leaves tab to that program.
+	Embedded bool
 }
 
 const (
@@ -178,6 +181,10 @@ func New(env *clean.Env, opts Options) Model {
 	a.wt = newWtState()
 	a.dk = newDkState()
 	a.run = newRunPanel()
+	if opts.Embedded {
+		a.keys.NextTab.SetEnabled(false)
+		a.keys.PrevTab.SetEnabled(false)
+	}
 	return Model{a}
 }
 
@@ -197,6 +204,10 @@ func (m Model) View() tea.View {
 // its own view. Size it with a tea.WindowSizeMsg for the space it gets, and
 // pass mouse events with Y counted from its top line.
 func (m Model) Content() string { return m.a.view() }
+
+// TakesKeys reports whether a flow (confirming, running…) or a text field
+// has the keyboard. Then every key belongs to it, tab and ctrl+c included.
+func (m Model) TakesKeys() bool { return m.a.modal() || m.a.typing() }
 
 func (a *app) init() tea.Cmd {
 	return tea.Batch(a.loadVolume(), a.loadHistory(), a.startScan(), a.discoverAll(), a.auditWorktrees(false), a.auditDocker(),
@@ -649,15 +660,22 @@ func (a *app) view() string {
 }
 
 func (a *app) headerView() string {
-	line1 := sTitle.Render("manage-disk")
+	var parts []string
+	if !a.opts.Embedded {
+		parts = append(parts, sTitle.Render("manage-disk"))
+	}
 	if a.volOK && a.vol.Total > 0 {
 		a.gauge.SetWidth(min(40, max(10, a.w/4)))
 		used := float64(a.vol.Used()) / float64(a.vol.Total)
-		line1 += "  " + a.gauge.ViewAs(used) + "  " + sBold.Render(human.Bytes(a.vol.Free)) +
-			sDim.Render(" free of "+human.Bytes(a.vol.Total))
+		parts = append(parts, a.gauge.ViewAs(used), sBold.Render(human.Bytes(a.vol.Free))+
+			sDim.Render(" free of "+human.Bytes(a.vol.Total)))
 	}
 	if a.opts.DryRun {
-		line1 += "  " + sDryBadge.Render("DRY RUN")
+		parts = append(parts, sDryBadge.Render("DRY RUN"))
+	}
+	line1 := strings.Join(parts, "  ")
+	if a.opts.Embedded {
+		line1 = " " + line1 // in line with the tab names below
 	}
 
 	var line2 string
