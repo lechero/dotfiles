@@ -1,0 +1,85 @@
+version: '3'
+
+vars:
+  BIN: manage-disk
+  PREFIX:
+    sh: echo "${PREFIX:-$HOME/.local/bin}"
+
+tasks:
+  default:
+    desc: List the tasks
+    silent: true
+    cmds:
+      - task --list
+
+  build:
+    desc: Build ./manage-disk (skipped when no Go file changed)
+    sources:
+      - '**/*.go'
+      - go.mod
+      - go.sum
+    generates:
+      - '{{.BIN}}'
+    cmds:
+      - go build -o {{.BIN}} .
+
+  run:
+    desc: Open the interface — cleans for real after you confirm
+    deps: [build]
+    interactive: true
+    cmds:
+      - ./{{.BIN}} {{.CLI_ARGS}}
+
+  dry:
+    desc: Open the interface with deletion switched off
+    deps: [build]
+    interactive: true
+    cmds:
+      - ./{{.BIN}} --dry-run {{.CLI_ARGS}}
+
+  report:
+    desc: Print the overview and cleanup plan, changing nothing (task report -- -v lists every item)
+    deps: [build]
+    cmds:
+      - ./{{.BIN}} report {{.CLI_ARGS}}
+
+  worktrees:
+    desc: List every worktree with a verdict, changing nothing (task worktrees -- --fetch checks against today's main)
+    deps: [build]
+    cmds:
+      - ./{{.BIN}} worktrees {{.CLI_ARGS}}
+
+  docker:
+    desc: "Docker's own disk, a verdict on everything in it, and the cheapest way to 22 GiB free (task docker -- --target 30), changing nothing"
+    deps: [build]
+    cmds:
+      - ./{{.BIN}} docker {{.CLI_ARGS}}
+
+  test:
+    desc: Vet, then run every test with the race detector
+    cmds:
+      - go vet ./...
+      - go test -race ./...
+
+  fmt:
+    desc: gofmt the code
+    cmds:
+      - gofmt -w .
+
+  install:
+    desc: Copy the binary to ~/.local/bin (override with PREFIX=...)
+    deps: [build]
+    cmds:
+      - mkdir -p "{{.PREFIX}}"
+      - cp {{.BIN}} "{{.PREFIX}}/{{.BIN}}"
+      - echo "installed {{.PREFIX}}/{{.BIN}}"
+
+  logs:
+    desc: Show today's cleanup log
+    cmds:
+      - cat "$HOME/Library/Logs/manage-disk/$(date +%F).log"
+
+  clean:
+    desc: Remove the built binary
+    cmds:
+      - rm -f {{.BIN}}
