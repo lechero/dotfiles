@@ -73,10 +73,10 @@ tasks:
     cmd: chezmoi update
 
   dotui:
-    desc: Open dotui
+    desc: Open dotui - packages, dotfiles and disk (task dotui -- --disk-dry-run cleans nothing)
     deps: [apps:build]
     interactive: true
-    cmd: "{{.DOTUI}} --file {{.PACKAGES}}"
+    cmd: "{{.DOTUI}} --file {{.PACKAGES}} {{.CLI_ARGS}}"
 
   disk:
     desc: Open manage-disk; it cleans for real after you confirm

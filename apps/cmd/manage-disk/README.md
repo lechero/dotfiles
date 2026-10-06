@@ -1,20 +1,24 @@
 # manage-disk
 
 Where your disk space goes, and the cleanups that are safe to repeat. It's a
-[Bubble Tea](https://github.com/charmbracelet/bubbletea) TUI for macOS.
+[Bubble Tea](https://github.com/charmbracelet/bubbletea) TUI for macOS. It
+runs on its own, and as the Disk tab of dotui.
+
+From the root of the dotfiles repo:
 
 ```bash
-task dry        # build and open it with deletion switched off
-task run        # build and open it for real
-task report     # print the overview and cleanup plan; changes nothing
-task worktrees  # list every worktree with a verdict; changes nothing
-task docker     # Docker's own disk, a verdict on everything in it, and the cheapest way to 22 GiB free; changes nothing
-task install    # copy the binary to ~/.local/bin
+task disk:dry        # build and open it with deletion switched off
+task disk            # build and open it for real
+task disk:report     # print the overview and cleanup plan; changes nothing
+task disk:worktrees  # list every worktree with a verdict; changes nothing
+task disk:docker     # Docker's own disk, a verdict on everything in it, and the cheapest way to 22 GiB free; changes nothing
+task disk:logs       # today's cleanup log
+task apps:install    # put it and dotui in ~/.local/bin
 ```
 
-`task --list` shows the rest: test, fmt, logs, clean. From another directory,
-use `task -d ~/manage-disk dry`. The Makefile has the same targets for
-machines without Task.
+Flags go after `--`, as in `task disk:report -- -v`. From another directory,
+use `task -d ~/.local/share/chezmoi disk:dry`. `task apps:test` vets, tests
+and lints it.
 
 ## Tabs
 
@@ -237,17 +241,22 @@ minutes after a prune. The summary shows the real change in free space.
 
 ## Layout
 
+Paths are under [`apps/`](../..), the Go module manage-disk shares with dotui.
+
 ```
-main.go, report.go      entry point, the `report` command
-*_cmd.go                the `worktrees` and `docker` commands
-internal/scan           parallel walker, tree, categories, hotspots, privacy rules
-internal/clean          task catalogue, process snapshot, guard, runner, history
-internal/worktrees      judges each worktree from git, GitHub and process evidence
-internal/docker         judges each image, container, volume and build cache slice
-internal/treemap        squarified treemap layout, snapped to terminal cells
-internal/ui             Bubble Tea model: overview, map, explorer, clean, worktrees, docker
-internal/human          sizes, counts and times for people
+cmd/manage-disk                   entry point, and the report, worktrees and docker commands
+internal/disk/scan                parallel walker, tree, categories, hotspots, privacy rules
+internal/disk/clean               task catalogue, process snapshot, guard, runner, history
+internal/disk/worktrees           judges each worktree from git, GitHub and process evidence
+internal/disk/docker              judges each image, container, volume and build cache slice
+internal/disk/treemap             squarified treemap layout, snapped to terminal cells
+internal/disk/ui                  Bubble Tea model: overview, map, explorer, clean, worktrees, docker
+internal/disk/human               sizes, counts and times for people
 ```
+
+dotui shows the same model on its Disk tab, through `ui.Options{Embedded:
+true}` and `Model.Content`: it leaves its name out and tab to dotui, and
+starts when the tab first opens.
 
 The interface is built from [bubbles](https://github.com/charmbracelet/bubbles):
 `key` and `help` for the key bindings and footer, `table` for the biggest
