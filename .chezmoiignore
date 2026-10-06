@@ -9,6 +9,7 @@ agents
 cv
 scripts
 state
+packages.yaml
 
 # Neovim
 **/autoload/
