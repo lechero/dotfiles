@@ -147,6 +147,17 @@ of the box; see [doc/jsp.md](doc/jsp.md) for what `gd` resolves and how the inde
 `gd` in an AEM component script opens the component, script, Java class or template the line
 references; see [doc/htl.md](doc/htl.md).
 
+### AEM
+
+`gd` through HTL, JSP and `.content.xml` (components, models, clientlibs, repository nodes), and
+`<leader>oa` to open a file's node on the local AEM; see [doc/aem.md](doc/aem.md).
+
+### Linting and tests
+
+The linters CI runs (checkstyle, ESLint, Stylelint, html-validate) run in the editor with the
+project's own configs, and Jest tests run from the editor; see [doc/linting.md](doc/linting.md) and
+[doc/testing.md](doc/testing.md).
+
 ### GitLab
 
 `.gitlab-ci.yml` and the files it includes are checked as you type (GitLab's CI schema,

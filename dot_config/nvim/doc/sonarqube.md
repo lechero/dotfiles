@@ -2,12 +2,13 @@
 
 Java, TypeScript and JavaScript buffers get SonarQube's issues as diagnostics, through
 [sonarlint.nvim](https://gitlab.com/schrieveslaach/sonarlint.nvim) and the language server behind
-SonarQube for IDE. A project bound to your SonarQube server is checked against that project's own
-rules (its quality profile); any other project gets Sonar's default rules. The config lives in:
+SonarQube for IDE. A project bound to your SonarQube server or SonarQube Cloud organization is
+checked against that project's own rules (its quality profile); any other project gets Sonar's
+default rules. The config lives in:
 
 | File | What it does |
 | --- | --- |
-| `lua/fuentastic/plugins/sonarlint.lua` | Starts the server, binds projects to SonarQube, looks up tokens |
+| `lua/fuentastic/plugins/sonarlint.lua` | Starts the server, binds projects to SonarQube (Server or Cloud), looks up tokens |
 | `lua/fuentastic/config/lsp.lua` | Mason installs `sonarlint-language-server` |
 
 ## Requirements
@@ -23,14 +24,23 @@ restart nvim.
 
 1. Put a `.sonarlint/connectedMode.json` in the project's git root. It's the file SonarQube for
    IDE writes in VS Code and IntelliJ when a team shares its setup, so some projects already have
-   one:
+   one. For a SonarQube server:
 
    ```json
    { "sonarQubeUri": "https://sonar.example.com", "projectKey": "group:artifact" }
    ```
 
+   For SonarQube Cloud (sonarcloud.io), the organization instead, and `"US"` as the region for
+   sonarqube.us:
+
+   ```json
+   { "sonarCloudOrganization": "my-org", "projectKey": "group:artifact", "region": "EU" }
+   ```
+
    The project key is on the project's *Project Information* page in SonarQube, or in the CI
-   scan's `-Dsonar.projectKey`. If the team doesn't commit `.sonarlint/`, keep yours out of git
+   scan's `-Dsonar.projectKey`. A `sonar-project.properties` with
+   `sonar.projectKey=<project.groupId>:<project.artifactId>` means the groupId and artifactId of the
+   root `pom.xml`; `sonar.organization` there is the SonarQube Cloud organization. If the team doesn't commit `.sonarlint/`, keep yours out of git
    with `echo .sonarlint >> .git/info/exclude`.
 
 2. Create a user token in SonarQube (*My Account → Security*) and store it in the macOS keychain,
@@ -39,6 +49,14 @@ restart nvim.
 
    ```sh
    security add-generic-password -s sonarqube -a sonar.example.com -w
+   ```
+
+   For SonarQube Cloud, create the token on sonarcloud.io (*My Account → Security*) and store it
+   under the host `sonarcloud.io` (`sonarqube.us` in the US region); it works for every
+   organization you're a member of:
+
+   ```sh
+   security add-generic-password -s sonarqube -a sonarcloud.io -w
    ```
 
    Without a keychain entry for the server's host, the `SONAR_TOKEN` environment variable is used.
@@ -56,6 +74,10 @@ them, with the rule key (e.g. `java:S1854`) as the code. `<leader>ca` on an issu
 | --- | --- |
 | SonarQube: Show issue details | The rule's description and examples |
 | SonarQube: Deactivate rule | Turns the rule off until nvim restarts; in a bound project the server's rules win |
+
+sonarlint.nvim's own handling of SonarQube Cloud connections reads them as one connection
+rather than a list, and errors on its connection notices; `plugins/sonarlint.lua` replaces those
+two notices.
 
 ## Troubleshooting
 

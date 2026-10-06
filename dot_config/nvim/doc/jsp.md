@@ -47,6 +47,7 @@ under the cursor, else the first.
 | `<cq:include script="header.jsp">`, `<sling:call script="...">` | That script |
 | `resourceType="site/components/title"` | The component's `title.html` or `title.jsp` |
 | `<sling:adaptTo adaptTo="com.example.Model">` | `Model.java` |
+| `<cq:includeClientLib categories="site.base">` | The clientlib with that category ([aem.md](aem.md#clientlibs)) |
 | Nothing of the above | Vim's own `gd` |
 
 Paths resolve like the server resolves them. A relative one starts next to the current page; an
