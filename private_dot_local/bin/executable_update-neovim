@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Build and install Neovim from the latest source (`upv` in fish).
+set -euo pipefail
+
+# Kill all Neovim processes
+echo "Killing all Neovim processes..."
+pkill -f nvim || true
+
+# Wait for a few seconds to ensure all processes are terminated
+sleep 2
+
+# Verify no nvim processes are running
+if pgrep -f nvim >/dev/null; then
+  echo "Failed to kill some nvim processes. Please terminate them manually and rerun the script."
+  exit 1
+else
+  echo "All Neovim processes terminated successfully."
+fi
+
+# Proceed with the update
+cd
+echo "Updating Neovim..."
+rm -rf tmp-neovim
+git clone https://github.com/neovim/neovim tmp-neovim
+cd tmp-neovim
+# git checkout Releases/v0.10.0
+make CMAKE_BUILD_TYPE=RelWithDebInfo
+sudo make install
+cd
+
+# Cleanup
+sudo rm -rf tmp-neovim
+
+echo "Neovim update completed!"
