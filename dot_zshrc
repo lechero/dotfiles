@@ -18,7 +18,10 @@ alias lg="lazygit"
 # see .chezmoiignore.
 [[ -r "$HOME/.config/shell/local.sh" ]] && source "$HOME/.config/shell/local.sh"
 
-#THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
-export SDKMAN_DIR="$HOME/.sdkman"
-[[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
+# SDKMAN, where it's installed. This must stay at the end of the file. Only
+# exported then: fish started from here would warn about an empty SDKMAN_DIR.
+if [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]]; then
+  export SDKMAN_DIR="$HOME/.sdkman"
+  source "$HOME/.sdkman/bin/sdkman-init.sh"
+fi
 
