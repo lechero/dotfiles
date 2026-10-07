@@ -43,8 +43,8 @@ packages:
   - {name: eslint, prio: 2, note: "Neovim lints JavaScript with it"}
   - {name: ffmpeg, prio: 2, note: "yt-dlp merges video and audio with it"}
   - {name: gcloud-cli, cask: true, prio: 2, note: "Google Cloud CLI"}
-  - {name: gh, prio: 2, note: "GitHub CLI"}
-  - {name: glab, prio: 2, note: "GitLab CLI; Neovim's GitLab integration uses it"}
+  - {name: gh, prio: 2, note: "GitHub CLI; dotui's GitHub tab reads GitHub through it"}
+  - {name: glab, prio: 2, note: "GitLab CLI; Neovim's GitLab integration and dotui's GitLab tab use it"}
   - {name: jless, prio: 2, note: "JSON pager, `jl`"}
   - {name: jq, prio: 2, note: "JSON processor"}
   - {name: lazydocker, prio: 2, note: "Docker TUI, `lz`"}
@@ -58,6 +58,7 @@ packages:
   - {name: yt-dlp, prio: 2, note: "Video downloader"}
 
   # 3 sometimes
+  - {name: atlassian/acli/acli, prio: 3, note: "Atlassian's CLI; dotui's Jira tab reads Jira through it"}
   - {name: act, prio: 3, note: "Runs GitHub Actions locally; projects use it"}
   - {name: dhth/tap/act3, prio: 3, note: "GitHub Actions run summaries"}
   - {name: actionlint, prio: 3, note: "Lints GitHub Actions workflows; pstack uses it"}
