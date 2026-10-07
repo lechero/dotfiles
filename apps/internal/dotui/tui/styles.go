@@ -9,6 +9,7 @@ import (
 // styles are Catppuccin colors, Mocha on dark terminals and Latte on light
 // ones, to match kitty and tmux.
 type styles struct {
+	isDark      bool
 	title       lipgloss.Style
 	tabActive   lipgloss.Style
 	tabInactive lipgloss.Style
@@ -38,6 +39,7 @@ func newStyles(isDark bool) styles {
 	)
 	badge := lipgloss.NewStyle().Foreground(base).Bold(true).Padding(0, 1)
 	return styles{
+		isDark:      isDark,
 		title:       lipgloss.NewStyle().Foreground(base).Background(mauve).Bold(true).Padding(0, 1),
 		tabActive:   lipgloss.NewStyle().Foreground(mauve).Bold(true).Underline(true).Padding(0, 1),
 		tabInactive: lipgloss.NewStyle().Foreground(overlay).Padding(0, 1),

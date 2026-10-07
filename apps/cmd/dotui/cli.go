@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"text/tabwriter"
 
 	tea "charm.land/bubbletea/v2"
@@ -19,7 +20,11 @@ import (
 	diskui "github.com/lechero/dotfiles/apps/internal/disk/ui"
 	"github.com/lechero/dotfiles/apps/internal/dotui/brew"
 	"github.com/lechero/dotfiles/apps/internal/dotui/catalog"
+	"github.com/lechero/dotfiles/apps/internal/dotui/github"
+	"github.com/lechero/dotfiles/apps/internal/dotui/gitlab"
+	"github.com/lechero/dotfiles/apps/internal/dotui/jira"
 	"github.com/lechero/dotfiles/apps/internal/dotui/tui"
+	"github.com/lechero/dotfiles/apps/internal/dotui/work"
 )
 
 // Exit codes.
@@ -33,8 +38,9 @@ const (
 const defaultPrio = 2
 
 const usage = `dotui shows the Homebrew packages this setup needs, the state of the
-dotfiles, and where the disk space goes. It installs or applies what's
-missing, and cleans what's safe to clean.
+dotfiles, where the disk space goes, and what needs you on GitHub, GitLab
+and Jira. It installs or applies what's missing, cleans what's safe to
+clean, and hands follow-ups to gh, glab and acli.
 
 Usage:
   dotui [--file F] [--source DIR] [--disk-dry-run]
@@ -318,7 +324,11 @@ func runTUI(ctx context.Context, args []string) error {
 	newDisk := func() tui.Disk {
 		return diskui.New(clean.NewEnv(home), diskui.Options{DryRun: *diskDryRun, Embedded: true})
 	}
-	m := tui.New(tui.Config{Catalog: c, File: path, Source: *source, Self: self, NewDisk: newDisk})
+	// Checkouts go in the clones under ~/projects, found once, when first needed.
+	clones := sync.OnceValue(func() work.Clones { return work.FindClones(filepath.Join(home, "projects"), 3) })
+	services := []work.Service{github.New(clones), gitlab.New(gitlab.DefaultHost, clones), jira.New()}
+	m := tui.New(tui.Config{Catalog: c, File: path, Source: *source, Self: self, NewDisk: newDisk,
+		Services: services, Cache: work.DefaultCache()})
 	_, err = tea.NewProgram(m, tea.WithContext(ctx)).Run()
 	if errors.Is(err, tea.ErrProgramKilled) && ctx.Err() != nil {
 		return nil

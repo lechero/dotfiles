@@ -67,7 +67,7 @@ func TestDiskTabStartsTheAnalyzerWhenFirstOpened(t *testing.T) {
 	}
 
 	m = press(t, m, tabKey, tabKey)
-	if m.tab != diskTab || *created != 1 || disk.inits != 1 {
+	if m.kind() != diskTab || *created != 1 || disk.inits != 1 {
 		t.Fatalf("two tabs on: tab %d, created %d, inits %d", m.tab, *created, disk.inits)
 	}
 	if got, want := disk.got[0], (tea.WindowSizeMsg{Width: 100, Height: 29}); got != want {
@@ -79,11 +79,11 @@ func TestDiskTabStartsTheAnalyzerWhenFirstOpened(t *testing.T) {
 	}
 
 	m = press(t, m, tabKey)
-	if m.tab != packagesTab || m.View().MouseMode != tea.MouseModeNone {
+	if m.kind() != packagesTab || m.View().MouseMode != tea.MouseModeNone {
 		t.Errorf("tab from Disk should wrap to Packages with the mouse off, tab %d", m.tab)
 	}
 	m = press(t, m, shiftTabKey)
-	if m.tab != diskTab || *created != 1 || disk.inits != 1 {
+	if m.kind() != diskTab || *created != 1 || disk.inits != 1 {
 		t.Errorf("reopening Disk should reuse the analyzer: tab %d, created %d, inits %d", m.tab, *created, disk.inits)
 	}
 
@@ -114,18 +114,18 @@ func TestDiskTabGetsTheKeysAndTheMouse(t *testing.T) {
 
 	disk.takesKeys = true
 	m = press(t, m, tabKey)
-	if m.tab != diskTab || disk.keys()[len(disk.keys())-1] != "tab" {
+	if m.kind() != diskTab || disk.keys()[len(disk.keys())-1] != "tab" {
 		t.Error("while the analyzer has the keyboard, tab is its key")
 	}
 	x := strings.Index(ansi.Strip(m.tabsLine()), "Packages")
 	m, _ = update(m, tea.MouseClickMsg{X: x, Y: 0, Button: tea.MouseLeft})
-	if m.tab != diskTab {
+	if m.kind() != diskTab {
 		t.Error("clicking another tab shouldn't leave a flow the analyzer is in")
 	}
 
 	disk.takesKeys = false
 	m, _ = update(m, tea.MouseClickMsg{X: x, Y: 0, Button: tea.MouseLeft})
-	if m.tab != packagesTab {
+	if m.kind() != packagesTab {
 		t.Errorf("clicking Packages in the tab line should open it, tab %d", m.tab)
 	}
 }
@@ -151,7 +151,7 @@ func TestNoDiskTabWithoutAnAnalyzer(t *testing.T) {
 	if strings.Contains(ansi.Strip(m.tabsLine()), "Disk") {
 		t.Error("no analyzer, no Disk tab")
 	}
-	if m = press(t, m, tabKey, tabKey); m.tab != packagesTab {
+	if m = press(t, m, tabKey, tabKey); m.kind() != packagesTab {
 		t.Errorf("two tabs should wrap back to Packages, tab %d", m.tab)
 	}
 }
