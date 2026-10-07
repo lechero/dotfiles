@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/lechero/dotfiles/apps/internal/dotui/work"
 )
@@ -42,6 +43,8 @@ func (s *Service) Detail(ctx context.Context, it work.Item) (work.Detail, error)
 		assignee = "nobody"
 	}
 	add("Assignee", assignee, work.Dim)
+	add("Created", when(f.Created.Time), work.Dim)
+	add("Updated", when(f.Updated.Time), work.Dim)
 	add("Reporter", f.Reporter.name(), work.Dim)
 	if p := f.Parent; p != nil {
 		add("Parent", p.Key+" "+p.Fields.Summary, work.Info)
@@ -103,4 +106,12 @@ func (s *Service) Actions(it work.Item) []work.Action {
 		{Key: "C", Help: "comment", Compose: true, Pause: true,
 			Args: []string{"acli", "jira", "workitem", "comment", "create", "--key", key, "--body", work.BodyArg}},
 	}
+}
+
+// when shows a time on the page; search gives no dates, so they're here.
+func when(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Local().Format("2 Jan 2006, 15:04")
 }

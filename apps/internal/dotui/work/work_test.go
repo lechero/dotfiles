@@ -31,6 +31,21 @@ func TestFollowUpsAreMostUrgentFirstAndListedOnce(t *testing.T) {
 	}
 }
 
+func TestFollowUpsWithoutTimesKeepTheServicesOrder(t *testing.T) {
+	d := Dashboard{Sections: []Section{{Items: []Item{
+		{ID: "WEB-9", Next: "to do", Urgency: 35},
+		{ID: "WEB-10", Next: "to do", Urgency: 35},
+		{ID: "WEB-2", Next: "to do", Urgency: 35},
+	}}}}
+	var got []string
+	for _, it := range d.FollowUps() {
+		got = append(got, it.ID)
+	}
+	if want := []string{"WEB-9", "WEB-10", "WEB-2"}; !slices.Equal(got, want) {
+		t.Errorf("FollowUps = %q, want the order they came in: %q", got, want)
+	}
+}
+
 func TestRepoKey(t *testing.T) {
 	for url, want := range map[string]string{
 		"git@github.com:lechero/dotfiles.git":                "github.com/lechero/dotfiles",
