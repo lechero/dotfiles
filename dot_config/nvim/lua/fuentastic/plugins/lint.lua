@@ -1,6 +1,6 @@
 -- The linters that aren't language servers, each run the way the project runs it (doc/linting.md):
--- checkstyle as its Maven build does, Stylelint and html-validate with its own binaries and configs.
--- Nothing runs in a project that doesn't use the linter.
+-- checkstyle as its Maven build does, Stylelint and html-validate with its own binaries and configs,
+-- Nunjucks as Backstage renders templates. Nothing runs in a project that doesn't use the linter.
 
 local function read(path)
   local file = io.open(path)
@@ -158,6 +158,65 @@ local html_validate = {
   end,
 }
 
+--------------------------------------------------------------------------------------------------
+-- Nunjucks: a Backstage template's files (ftdetect/backstage.lua), compiled and rendered the way
+-- fetch:template does (scripts/nunjucks-lint.js)
+
+-- Nunjucks, and jsonc-parser for the JSON a template renders. npm installs them the first time a
+-- template is opened, and the template is linted once they're there.
+local nunjucks_dir = vim.fn.stdpath 'data' .. '/nunjucks'
+local npm_install
+
+local function install_nunjucks(buf)
+  if npm_install then
+    return
+  end
+  local cmd = { 'npm', 'install', '--prefix', nunjucks_dir, '--no-audit', '--no-fund', 'nunjucks@3.2.4', 'jsonc-parser@3.3.1' }
+  npm_install = vim.system(
+    cmd,
+    {},
+    vim.schedule_wrap(function(result)
+      if result.code ~= 0 then
+        vim.notify('npm could not install Nunjucks to lint Backstage templates:\n' .. result.stderr, vim.log.levels.WARN)
+      elseif vim.api.nvim_buf_is_valid(buf) then
+        vim.api.nvim_buf_call(buf, function()
+          require('lint').try_lint 'nunjucks'
+        end)
+      end
+    end)
+  )
+end
+
+-- {"line":30,"col":1,"severity":"warning","message":"Renders invalid JSON (comma expected) near: } {"}
+local nunjucks = {
+  cmd = 'node',
+  stdin = true,
+  args = {
+    vim.fn.stdpath 'config' .. '/scripts/nunjucks-lint.js',
+    nunjucks_dir,
+    function()
+      return vim.b.template_lang or ''
+    end,
+  },
+  ignore_exitcode = true,
+  parser = function(output)
+    local diagnostics = {}
+    for line in output:gmatch '[^\n]+' do
+      local ok, d = pcall(vim.json.decode, line)
+      if ok and type(d) == 'table' then
+        table.insert(diagnostics, {
+          lnum = d.line - 1,
+          col = d.col - 1,
+          severity = d.severity == 'error' and vim.diagnostic.severity.ERROR or vim.diagnostic.severity.WARN,
+          message = d.message,
+          source = 'nunjucks',
+        })
+      end
+    end
+    return diagnostics
+  end,
+}
+
 -- The linters that apply to a buffer, and the directory each runs in.
 local function linters_for(buf)
   local file = vim.api.nvim_buf_get_name(buf)
@@ -173,6 +232,12 @@ local function linters_for(buf)
     local config = nearest(buf, html_validate_configs)
     return config and nearest(buf, 'node_modules/.bin/html-validate') and { html_validate = vim.fs.dirname(config) } or {}
   end
+  if ft == 'jinja' and file:find('/skeleton/', 1, true) and vim.fn.executable 'npm' == 1 then -- Backstage
+    if vim.uv.fs_stat(nunjucks_dir .. '/node_modules/jsonc-parser') then
+      return { nunjucks = vim.fs.dirname(file) }
+    end
+    install_nunjucks(buf)
+  end
   return {}
 end
 
@@ -183,6 +248,7 @@ return {
     local lint = require 'lint'
     lint.linters.checkstyle = checkstyle
     lint.linters.html_validate = html_validate
+    lint.linters.nunjucks = nunjucks
     lint.linters.stylelint.cmd = function()
       return nearest(0, 'node_modules/.bin/stylelint')
     end
