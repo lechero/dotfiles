@@ -26,6 +26,10 @@ local parsers = {
   'tsx',
   'css',
   'scss',
+  'json',
+  -- Backstage templates (ftdetect/backstage.lua): the markup, and the JSON or YAML around it
+  'jinja',
+  'jinja_inline',
   -- jsp: this config's own parser (tree-sitter-jsp/), which hands the markup to html and the
   -- scriptlets to java
   'jsp',
@@ -57,6 +61,12 @@ return {
 
     -- GitLab CI files (ftdetect/gitlab-ci.lua). A FileType autocmd for yaml doesn't fire for them.
     vim.treesitter.language.register('yaml', 'yaml.gitlab')
+
+    -- A Backstage template's text is in the language of the file it renders (ftdetect/backstage.lua,
+    -- after/queries/jinja/injections.scm). None for a plain .jinja file.
+    vim.treesitter.query.add_directive('set-template-lang!', function(_, _, source, _, metadata)
+      metadata['injection.language'] = type(source) == 'number' and vim.b[source].template_lang or nil
+    end, { force = true })
 
     -- Skips what's already installed. Parsers and their queries land in stdpath('data')/site,
     -- which is ahead of the plugin dir on the runtimepath.
