@@ -73,6 +73,9 @@ func (m Model) dashboardView() string {
 
 func (m Model) greetingLine() string {
 	st := m.styles
+	if c := m.dash.confirm; c != nil {
+		return ansi.Truncate(" "+st.warn.Render(c.question)+st.accent.Render(" y/n"), m.width, "…")
+	}
 	now := m.dash.now()
 	hello := greeting(now)
 	if mi := m.dash.machine; mi != nil && mi.FirstName() != "" {
@@ -192,10 +195,12 @@ func (m Model) packagesCard() []string {
 		return []string{st.dim.Render("Asking Homebrew…")}
 	}
 	tallies := prioTallies(m.cfg.Catalog, m.inv)
-	count := func(prio int) string {
+	counts := make([]string, 0, catalog.MaxPrio)
+	for prio := catalog.MinPrio; prio <= catalog.MaxPrio; prio++ {
 		t := tallies[prio]
 		if t.total == 0 {
-			return st.dim.Render(fmt.Sprintf("P%d %s —", prio, catalog.PrioNames[prio]))
+			counts = append(counts, st.dim.Render(fmt.Sprintf("P%d —", prio)))
+			continue
 		}
 		style := st.good
 		if t.installed < t.total {
@@ -204,9 +209,9 @@ func (m Model) packagesCard() []string {
 				style = st.bad
 			}
 		}
-		return st.dim.Render(fmt.Sprintf("P%d %s ", prio, catalog.PrioNames[prio])) + style.Render(fmt.Sprintf("%d/%d", t.installed, t.total))
+		counts = append(counts, st.dim.Render(fmt.Sprintf("P%d ", prio))+style.Render(fmt.Sprintf("%d/%d", t.installed, t.total)))
 	}
-	lines := []string{count(1) + "  " + count(2), count(3) + "  " + count(4)}
+	lines := []string{strings.Join(counts, st.dim.Render(" · "))}
 	if missing := m.missingUpTo(dashPrio); len(missing) > 0 {
 		names := make([]string, len(missing))
 		for i, p := range missing {
@@ -229,7 +234,9 @@ func (m Model) packagesCard() []string {
 		for i, u := range d.updates {
 			names[i] = u.Name
 		}
-		lines = append(lines, st.warn.Render(fmt.Sprintf("↑ %d %s: ", len(d.updates), plural(len(d.updates), "update", "updates")))+st.dim.Render(shorten(names, 3)))
+		lines = append(lines,
+			st.warn.Render(fmt.Sprintf("↑ %d %s", len(d.updates), plural(len(d.updates), "update", "updates")))+st.dim.Render(" · U upgrades"),
+			st.dim.Render(shorten(names, 3)))
 	}
 	return lines
 }
@@ -493,7 +500,10 @@ func (m Model) nextHeadingLine() string {
 	if len(names) > 0 {
 		line += st.dim.Render(" across " + joinAnd(names))
 	}
-	return line
+	if m.dash.flash != "" {
+		line += "  " + m.dash.flash
+	}
+	return ansi.Truncate(line, m.width, "…")
 }
 
 func (m Model) nextEmpty() string {
