@@ -5,6 +5,8 @@
 #
 # The dotfiles tasks run chezmoi against its own source directory, except
 # dotfiles:preview, which shows what applying this checkout would change.
+# On a machine where chezmoi isn't set up yet, dotfiles:init (part of
+# install) clones this repo's origin for it.
 version: "3"
 
 vars:
@@ -13,6 +15,9 @@ vars:
   DISK: "{{.ROOT_DIR}}/apps/bin/manage-disk"
   PACKAGES: "{{.ROOT_DIR}}/packages.yaml"
   STYLUA: "{{.HOME}}/.local/share/nvim/mason/bin/stylua"
+  # Where dotfiles:init clones from: this checkout's origin.
+  ORIGIN:
+    sh: git -C "{{.ROOT_DIR}}" remote get-url origin 2>/dev/null || echo https://github.com/lechero/dotfiles.git
 
 tasks:
   default:
@@ -21,9 +26,10 @@ tasks:
     cmd: task --list
 
   install:
-    desc: Set up this machine - install packages up to PRIO, then apply the dotfiles
+    desc: Set up this machine - install packages up to PRIO, set chezmoi up if it isn't, then apply the dotfiles
     cmds:
       - task: deps:install
+      - task: dotfiles:init
       - task: dotfiles:apply
 
   check:
@@ -48,12 +54,22 @@ tasks:
     deps: [apps:build]
     cmd: "{{.DOTUI}} list --file {{.PACKAGES}} {{.CLI_ARGS}}"
 
+  dotfiles:init:
+    desc: Set chezmoi up with a clone of this repo's origin, unless it has a source already
+    status:
+      - test -d "$(chezmoi source-path)"
+    cmd: chezmoi init "{{.ORIGIN}}"
+
   dotfiles:status:
     desc: Show what chezmoi apply would change
+    preconditions: &has-source
+      - sh: test -d "$(chezmoi source-path)"
+        msg: "chezmoi isn't set up on this machine yet: `task dotfiles:init` sets it up, and `task install` does everything"
     cmd: chezmoi status
 
   dotfiles:diff:
     desc: Show the diff chezmoi apply would make
+    preconditions: *has-source
     interactive: true
     cmd: chezmoi diff
 
@@ -64,11 +80,13 @@ tasks:
 
   dotfiles:apply:
     desc: Apply the dotfiles
+    preconditions: *has-source
     interactive: true
     cmd: chezmoi apply
 
   dotfiles:update:
     desc: Pull the latest dotfiles and apply them
+    preconditions: *has-source
     interactive: true
     cmd: chezmoi update
 

@@ -22,6 +22,8 @@ task -d ~/.local/share/chezmoi install
 
 That installs every priority 1 and 2 package, then applies the dotfiles. `PRIO=1` installs only the core, and `PRIO=4` everything.
 
+`task install` also works from any other clone of this repo, like `~/dotfiles`. When chezmoi isn't set up yet, it runs `chezmoi init` with that clone's origin first, so chezmoi gets its own copy in `~/.local/share/chezmoi`. `task dotfiles:init` does only that step.
+
 ## Everyday
 
 | Command | What it does |
@@ -57,7 +59,7 @@ It opens on the **Dashboard**, which sums them all up:
   - **GitHub, GitLab and Jira:** the account, each list's total, and what needs you.
 - **Next up:** the follow-ups from every service in one list, most urgent first. `enter` opens one on its tab.
 
-On the dashboard, `i` installs what's missing up to priority 2, `u` pulls and applies the dotfiles, and `r` refreshes everything. It reads only: the update check doesn't update Homebrew, and the origin check uses `git ls-remote`, which changes nothing locally.
+On the dashboard, `i` installs what's missing up to priority 2, `u` pulls and applies the dotfiles, `U` upgrades the Homebrew packages (after asking, since `brew upgrade` doesn't), and `r` refreshes everything. Until you press one of those, it only reads: the update check doesn't update Homebrew, and the origin check uses `git ls-remote`, which changes nothing locally.
 
 | Key | Packages | Key | Dotfiles |
 | --- | --- | --- | --- |
