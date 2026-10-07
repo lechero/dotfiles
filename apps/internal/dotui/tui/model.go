@@ -1,7 +1,7 @@
-// Package tui is dotui's interactive view: the Homebrew packages with their
-// priorities and install state, what `chezmoi apply` would change, where
-// the disk space goes, and what needs following up on GitHub, GitLab and
-// Jira.
+// Package tui is dotui's interactive view: a dashboard of it all, the
+// Homebrew packages with their priorities and install state, what
+// `chezmoi apply` would change, where the disk space goes, and what needs
+// following up on GitHub, GitLab and Jira.
 package tui
 
 import (
@@ -21,6 +21,7 @@ import (
 	"github.com/lechero/dotfiles/apps/internal/dotui/brew"
 	"github.com/lechero/dotfiles/apps/internal/dotui/catalog"
 	"github.com/lechero/dotfiles/apps/internal/dotui/chezmoi"
+	"github.com/lechero/dotfiles/apps/internal/dotui/machine"
 	"github.com/lechero/dotfiles/apps/internal/dotui/work"
 )
 
@@ -40,12 +41,19 @@ type Config struct {
 	Services []work.Service
 	// Cache keeps the services' last dashboards.
 	Cache work.Cache
+
+	// The dashboard's readers; each left nil leaves its part out.
+	Outdated    func(ctx context.Context) ([]brew.Update, error)
+	SourceState func(ctx context.Context, source string) (chezmoi.Source, error)
+	Machine     func(ctx context.Context) machine.Info
+	DiskStatus  func(ctx context.Context) (DiskStatus, error)
 }
 
 type tabKind int
 
 const (
-	packagesTab tabKind = iota
+	dashboardTab tabKind = iota
+	packagesTab
 	dotfilesTab
 	diskTab
 	serviceTab
@@ -104,6 +112,7 @@ type Model struct {
 	spinner  spinner.Model
 
 	disk Disk // nil until the Disk tab first opens
+	dash *dashboard
 }
 
 // New builds the view. It starts loading when the program runs it.
@@ -121,7 +130,7 @@ func New(cfg Config) Model {
 	m.packages = m.newList("package", "packages", m.keys.packageKeys)
 	m.dotfiles = m.newList("change", "changes", m.keys.dotfileKeys)
 	m.dotfiles.Title = "Changes to apply"
-	m.tabs = []tabEntry{{kind: packagesTab, name: "Packages"}, {kind: dotfilesTab, name: "Dotfiles"}}
+	m.tabs = []tabEntry{{kind: dashboardTab, name: "Dashboard"}, {kind: packagesTab, name: "Packages"}, {kind: dotfilesTab, name: "Dotfiles"}}
 	if cfg.NewDisk != nil {
 		m.tabs = append(m.tabs, tabEntry{kind: diskTab, name: "Disk"})
 	}
@@ -129,8 +138,10 @@ func New(cfg Config) Model {
 		v := newServiceView(svc, m.styles, cfg.Cache, cfg.Self, cfg.File)
 		m.tabs = append(m.tabs, tabEntry{kind: serviceTab, name: svc.Name(), service: v})
 	}
+	m.dash = newDashboard(m.styles, len(m.tabs))
 	m.applyStyles(true)
 	m.showPackages()
+	m.rebuildNext() // from the services' cached dashboards
 	return m
 }
 
@@ -167,6 +178,7 @@ func (m Model) Init() tea.Cmd {
 	if len(m.cfg.Services) > 0 {
 		cmds = append(cmds, refreshTick())
 	}
+	cmds = append(cmds, m.loadDashboard())
 	return tea.Batch(cmds...)
 }
 
@@ -199,6 +211,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, v := range m.services() {
 			v.setSize(msg.Width, msg.Height)
 		}
+		m.layoutDashboard()
 		cmd := m.updateDisk(m.diskSize())
 		return m, cmd
 
@@ -233,9 +246,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case checkedMsg:
-		return m, msg.v.update(msg)
+		cmd := msg.v.update(msg)
+		return m, tea.Batch(cmd, m.rebuildNext())
 	case dashLoadedMsg:
-		return m, msg.v.update(msg)
+		cmd := msg.v.update(msg)
+		return m, tea.Batch(cmd, m.rebuildNext())
+	case outdatedMsg, sourceMsg, machineMsg, diskMsg:
+		m.updateDashboard(msg)
+		return m, nil
 	case detailLoadedMsg:
 		return m, msg.v.update(msg)
 	case actionDoneMsg:
@@ -245,7 +263,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case flashMsg:
 		return m, msg.v.update(msg)
 	case refreshMsg:
-		cmds := []tea.Cmd{refreshTick()}
+		cmds := []tea.Cmd{refreshTick(), m.loadDashboard()}
 		for _, v := range m.services() {
 			cmds = append(cmds, v.load())
 		}
@@ -256,11 +274,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			status = m.styles.bad.Render(fmt.Sprintf("%s failed: %v", msg.what, msg.err))
 		}
-		cmd := tea.Batch(m.reload(), m.notify(status))
+		cmd := tea.Batch(m.reload(), m.loadDashboard(), m.notify(status))
 		return m, cmd
 
 	case tea.KeyPressMsg:
 		switch m.kind() {
+		case dashboardTab:
+			switch {
+			case msg.String() == "ctrl+c" || key.Matches(msg, m.keys.Quit):
+				return m, tea.Quit
+			case key.Matches(msg, m.keys.SwitchTab):
+				cmd := m.switchTab(msg.String() == "shift+tab")
+				return m, cmd
+			}
+			cmd := m.dashboardKey(msg)
+			return m, cmd
 		case diskTab:
 			cmd := m.diskKey(msg)
 			return m, cmd
@@ -448,6 +476,9 @@ func (m *Model) reload() tea.Cmd {
 }
 
 func (m *Model) notify(status string) tea.Cmd {
+	if m.kind() == dashboardTab {
+		return m.dash.next.NewStatusMessage(status)
+	}
 	if m.kind() == packagesTab {
 		return m.packages.NewStatusMessage(status)
 	}
@@ -485,6 +516,8 @@ func (m Model) active() list.Model {
 func (m Model) View() tea.View {
 	var content string
 	switch m.kind() {
+	case dashboardTab:
+		content = m.dashboardView()
 	case diskTab:
 		body := m.styles.dim.Render(" Starting the disk analyzer…")
 		if m.disk != nil {
@@ -628,6 +661,9 @@ func (m *Model) applyStyles(isDark bool) {
 			v.lists[i].Styles = list.DefaultStyles(isDark)
 		}
 		v.renderPage()
+	}
+	if m.dash != nil {
+		m.dash.next.Styles = list.DefaultStyles(isDark)
 	}
 }
 

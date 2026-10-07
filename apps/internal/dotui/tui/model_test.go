@@ -37,7 +37,20 @@ packages:
 		Formulae: map[string]bool{"fish": true, "jq": true},
 		Casks:    map[string]bool{"rancher": true},
 	}})
-	return model.(Model)
+	return goTo(t, model.(Model), packagesTab)
+}
+
+// goTo brings the first tab of kind to the front, as switching to it would.
+func goTo(t *testing.T, m Model, kind tabKind) Model {
+	t.Helper()
+	for i, entry := range m.tabs {
+		if entry.kind == kind {
+			m.setTab(i)
+			return m
+		}
+	}
+	t.Fatalf("no tab of kind %d", kind)
+	return m
 }
 
 func press(t *testing.T, m Model, keys ...tea.KeyPressMsg) Model {

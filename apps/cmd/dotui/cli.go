@@ -17,12 +17,15 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/lechero/dotfiles/apps/internal/disk/clean"
+	"github.com/lechero/dotfiles/apps/internal/disk/scan"
 	diskui "github.com/lechero/dotfiles/apps/internal/disk/ui"
 	"github.com/lechero/dotfiles/apps/internal/dotui/brew"
 	"github.com/lechero/dotfiles/apps/internal/dotui/catalog"
+	"github.com/lechero/dotfiles/apps/internal/dotui/chezmoi"
 	"github.com/lechero/dotfiles/apps/internal/dotui/github"
 	"github.com/lechero/dotfiles/apps/internal/dotui/gitlab"
 	"github.com/lechero/dotfiles/apps/internal/dotui/jira"
+	"github.com/lechero/dotfiles/apps/internal/dotui/machine"
 	"github.com/lechero/dotfiles/apps/internal/dotui/tui"
 	"github.com/lechero/dotfiles/apps/internal/dotui/work"
 )
@@ -328,12 +331,31 @@ func runTUI(ctx context.Context, args []string) error {
 	clones := sync.OnceValue(func() work.Clones { return work.FindClones(filepath.Join(home, "projects"), 3) })
 	services := []work.Service{github.New(clones), gitlab.New(gitlab.DefaultHost, clones), jira.New()}
 	m := tui.New(tui.Config{Catalog: c, File: path, Source: *source, Self: self, NewDisk: newDisk,
-		Services: services, Cache: work.DefaultCache()})
+		Services: services, Cache: work.DefaultCache(),
+		Outdated: brew.Outdated, SourceState: chezmoi.SourceState, Machine: machine.Read,
+		DiskStatus: func(context.Context) (tui.DiskStatus, error) { return diskStatus(home) },
+	})
 	_, err = tea.NewProgram(m, tea.WithContext(ctx)).Run()
 	if errors.Is(err, tea.ErrProgramKilled) && ctx.Err() != nil {
 		return nil
 	}
 	return err
+}
+
+// diskStatus is the dashboard's Disk card: the volume, and manage-disk's
+// last clean and record of free space. It only reads.
+func diskStatus(home string) (tui.DiskStatus, error) {
+	v, err := scan.VolumeOf(home)
+	if err != nil {
+		return tui.DiskStatus{}, err
+	}
+	env := clean.NewEnv(home)
+	st := tui.DiskStatus{Free: v.Free, Total: v.Total}
+	if last := clean.LastRun(env); last != nil {
+		st.LastClean, st.Freed = last.Time, last.Freed
+	}
+	st.TrendAt, st.Trend = diskui.FreeHistory(env.StateDir)
+	return st, nil
 }
 
 func stateWord(s brew.State) string {

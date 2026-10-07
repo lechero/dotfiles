@@ -73,7 +73,7 @@ tasks:
     cmd: chezmoi update
 
   dotui:
-    desc: Open dotui - packages, dotfiles and disk (task dotui -- --disk-dry-run cleans nothing)
+    desc: Open dotui - a dashboard, packages, dotfiles, disk, and GitHub, GitLab and Jira (task dotui -- --disk-dry-run cleans nothing)
     deps: [apps:build]
     interactive: true
     cmd: "{{.DOTUI}} --file {{.PACKAGES}} {{.CLI_ARGS}}"

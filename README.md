@@ -47,6 +47,18 @@ That installs every priority 1 and 2 package, then applies the dotfiles. `PRIO=1
 
 `task dotui` opens an interactive view of the same list, of what `chezmoi apply` would change, of where the disk space goes, and of your work on GitHub, GitLab and Jira. `tab` and `shift+tab` switch between them.
 
+It opens on the **Dashboard**, which sums them all up:
+
+- **This Mac:** its name, macOS version, uptime, load and battery.
+- **Cards:** one per tab, numbered with the key that opens it.
+  - **Packages:** what's installed per priority, what's missing, and how many Homebrew updates are waiting.
+  - **Dotfiles:** changes to apply, the source's last commit, uncommitted files, and whether origin has newer commits.
+  - **Disk:** how full it is, the free-space trend over the last week, and manage-disk's last clean.
+  - **GitHub, GitLab and Jira:** the account, each list's total, and what needs you.
+- **Next up:** the follow-ups from every service in one list, most urgent first. `enter` opens one on its tab.
+
+On the dashboard, `i` installs what's missing up to priority 2, `u` pulls and applies the dotfiles, and `r` refreshes everything. It reads only: the update check doesn't update Homebrew, and the origin check uses `git ls-remote`, which changes nothing locally.
+
 | Key | Packages | Key | Dotfiles |
 | --- | --- | --- | --- |
 | `1`–`4` | Show priorities up to | `d` | Diff |

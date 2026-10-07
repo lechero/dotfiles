@@ -79,8 +79,8 @@ func TestDiskTabStartsTheAnalyzerWhenFirstOpened(t *testing.T) {
 	}
 
 	m = press(t, m, tabKey)
-	if m.kind() != packagesTab || m.View().MouseMode != tea.MouseModeNone {
-		t.Errorf("tab from Disk should wrap to Packages with the mouse off, tab %d", m.tab)
+	if m.kind() != dashboardTab || m.View().MouseMode != tea.MouseModeNone {
+		t.Errorf("tab from Disk should wrap to the dashboard with the mouse off, tab %d", m.tab)
 	}
 	m = press(t, m, shiftTabKey)
 	if m.kind() != diskTab || *created != 1 || disk.inits != 1 {
@@ -95,7 +95,7 @@ func TestDiskTabStartsTheAnalyzerWhenFirstOpened(t *testing.T) {
 
 func TestDiskTabGetsTheKeysAndTheMouse(t *testing.T) {
 	m, disk, _ := diskModel(t)
-	m = press(t, m, shiftTabKey) // back from Packages wraps to Disk
+	m = goTo(t, m, diskTab)
 	m = press(t, m, char('1'), char('r'))
 	if got := strings.Join(disk.keys(), " "); got != "1 r" {
 		t.Errorf("analyzer got keys %q, want \"1 r\"", got)
@@ -134,7 +134,7 @@ type scanProgressMsg struct{}
 
 func TestDiskKeepsWorkingInTheBackground(t *testing.T) {
 	m, disk, _ := diskModel(t)
-	m = press(t, m, shiftTabKey, tabKey) // open Disk, then back to Packages
+	m = press(t, m, tabKey, tabKey, shiftTabKey, shiftTabKey) // open Disk, then back to Packages
 	before := len(disk.keys())
 	m, _ = update(m, scanProgressMsg{})
 	if _, ok := disk.got[len(disk.got)-1].(scanProgressMsg); !ok {
@@ -151,7 +151,7 @@ func TestNoDiskTabWithoutAnAnalyzer(t *testing.T) {
 	if strings.Contains(ansi.Strip(m.tabsLine()), "Disk") {
 		t.Error("no analyzer, no Disk tab")
 	}
-	if m = press(t, m, tabKey, tabKey); m.kind() != packagesTab {
-		t.Errorf("two tabs should wrap back to Packages, tab %d", m.tab)
+	if m = press(t, m, tabKey, tabKey, tabKey); m.kind() != packagesTab {
+		t.Errorf("three tabs should wrap back to Packages, tab %d", m.tab)
 	}
 }

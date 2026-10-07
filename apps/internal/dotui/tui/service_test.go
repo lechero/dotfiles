@@ -329,8 +329,8 @@ func TestServiceTabKeys(t *testing.T) {
 		t.Error("letters type into the filter")
 	}
 	m = keys(t, m, tea.KeyPressMsg{Code: tea.KeyEscape}, tabKey)
-	if m.kind() != packagesTab {
-		t.Errorf("tab from the last tab should wrap to Packages, got kind %d", m.kind())
+	if m.kind() != dashboardTab {
+		t.Errorf("tab from the last tab should wrap to the dashboard, got kind %d", m.kind())
 	}
 }
 
