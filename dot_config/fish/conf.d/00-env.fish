@@ -34,14 +34,26 @@ set -gx BUILDKIT_PROGRESS plain
 
 # Gradle and Maven build with Android Studio's JDK (Java 25), while `java`
 # on PATH is SDKMAN's (Java 21). This is how fish has always been set up.
-set -gx JAVA_HOME "/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+set -l studio_jdk "/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+test -d $studio_jdk; and set -gx JAVA_HOME $studio_jdk
+
+# A fish started from zsh inherits SDKMAN_DIR, even on a machine without
+# SDKMAN, and sdkman-for-fish then warns at every start. Unset, it's quiet.
+if set -q SDKMAN_DIR; and not test -f $SDKMAN_DIR/bin/sdkman-init.sh
+    set -e SDKMAN_DIR
+end
 
 # Neovim's plugin manager spawns many git processes at once, more than
 # macOS's default limit of 256 open files allows.
 ulimit -n 10480
 
-# nvm.fish switches every new interactive shell to this Node version.
-set -g nvm_default_version 20
+# nvm.fish switches every new interactive shell to this Node version, once
+# it's installed (`nvm install 20`); before that, it complains in each one.
+set -l nvm_dir ~/.local/share/nvm
+set -q XDG_DATA_HOME; and set nvm_dir $XDG_DATA_HOME/nvm
+set -q nvm_data; and set nvm_dir $nvm_data
+set -l node_20 $nvm_dir/v20.*
+set -q node_20[1]; and set -g nvm_default_version 20
 
 # API keys and tokens, kept out of the repo (see .chezmoiignore).
 test -r $__fish_config_dir/secrets.fish
