@@ -68,7 +68,10 @@ func (d workDelegate) Render(w io.Writer, m list.Model, index int, li list.Item)
 	if index == m.Index() {
 		cursor, title = st.accent.Render("› "), st.accent.Render(r.Title)
 	}
-	age := st.dim.Render(human.Ago(d.v.now(), r.Updated))
+	age := ""
+	if !r.Updated.IsZero() {
+		age = st.dim.Render(human.Ago(d.v.now(), r.Updated))
+	}
 	line1 := cursor + st.accent.Render(r.Ref) + " " + title
 	if room := width - lipgloss.Width(age) - 1; lipgloss.Width(line1) > room {
 		line1 = ansi.Truncate(line1, max(0, room), "…")
@@ -283,7 +286,9 @@ func (v *serviceView) pageView() string {
 	if it.Author != "" {
 		sub = append(sub, "by "+it.Author)
 	}
-	sub = append(sub, "updated "+human.Ago(v.now(), it.Updated))
+	if !it.Updated.IsZero() {
+		sub = append(sub, "updated "+human.Ago(v.now(), it.Updated))
+	}
 	footer := v.pageFooter()
 	return strings.Join([]string{
 		ansi.Truncate(header, v.width, "…"),

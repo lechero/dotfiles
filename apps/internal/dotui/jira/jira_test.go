@@ -14,11 +14,23 @@ import (
 	"github.com/lechero/dotfiles/apps/internal/dotui/work"
 )
 
+// searchAllows are the fields acli 1.3's search accepts; it refuses others,
+// dates and project among them.
+var searchAllows = []string{"key", "summary", "status", "priority", "issuetype", "assignee", "reporter", "labels", "description"}
+
 // fakeACLI answers acli commands whose text contains one of answers' keys.
+// Like acli, its search refuses fields it doesn't allow.
 func fakeACLI(t *testing.T, answers map[string]string) *Service {
 	t.Helper()
 	run := func(_ context.Context, name string, args ...string) ([]byte, error) {
 		cmd := name + " " + strings.Join(args, " ")
+		if i := slices.Index(args, "--fields"); i >= 0 && slices.Contains(args, "search") {
+			for f := range strings.SplitSeq(args[i+1], ",") {
+				if !slices.Contains(searchAllows, f) {
+					return nil, fmt.Errorf("acli: ✗ Error: field '%s' is not allowed", f)
+				}
+			}
+		}
 		for part, out := range answers {
 			if strings.Contains(cmd, part) {
 				if strings.HasPrefix(out, "error:") {
@@ -33,21 +45,22 @@ func fakeACLI(t *testing.T, answers map[string]string) *Service {
 	return &Service{Run: run}
 }
 
-func issueJSON(key, summary, status, category, priority, updated string) string {
-	return fmt.Sprintf(`{"key": %q, "self": "https://acme.atlassian.net/rest/api/3/issue/1%s",
-	  "fields": {"summary": %q, "updated": %q, "status": {"name": %q, "statusCategory": {"key": %q}},
-	  "priority": {"name": %q}, "issuetype": {"name": "Task"}, "reporter": {"displayName": "Pat"},
-	  "project": {"key": "WEB", "name": "Website"}}}`, key, key[4:], summary, updated, status, category, priority)
+// issueJSON is a work item as acli's search prints it: no dates, no project.
+func issueJSON(key, summary, status, category, priority string) string {
+	return fmt.Sprintf(`{"key": %q, "self": "https://acme.atlassian.net/rest/api/3/issue/1%s", "changelog": null,
+	  "fields": {"summary": %q, "status": {"name": %q, "statusCategory": {"key": %q}},
+	  "priority": {"name": %q}, "issuetype": {"name": "Task"}, "reporter": {"displayName": "Pat"}, "labels": []}}`,
+		key, key[4:], summary, status, category, priority)
 }
 
 func TestDashboard(t *testing.T) {
 	mine := "[" + strings.Join([]string{
-		issueJSON("WEB-1", "Fix login", "In Progress", "indeterminate", "Medium", "2026-10-06T09:00:00.000+0200"),
-		issueJSON("WEB-2", "Outage page", "To Do", "new", "Highest", "2026-10-05T09:00:00.000+0200"),
-		issueJSON("WEB-3", "Tidy footer", "To Do", "new", "Low", "2026-10-04T09:00:00.000+0200"),
+		issueJSON("WEB-1", "Fix login", "In Progress", "indeterminate", "Medium"),
+		issueJSON("WEB-2", "Outage page", "To Do", "new", "Highest"),
+		issueJSON("WEB-3", "Tidy footer", "To Do", "new", "Low"),
 	}, ",") + "]"
 	// acli may wrap results in an object; both read.
-	watching := `{"issues": [` + issueJSON("WEB-9", "Design review", "In Review", "indeterminate", "Medium", "2026-10-06T12:00:00.000Z") + `]}`
+	watching := `{"issues": [` + issueJSON("WEB-9", "Design review", "In Review", "indeterminate", "Medium") + `]}`
 	s := fakeACLI(t, map[string]string{
 		"assignee = currentUser() AND statusCategory != Done": mine,
 		"watcher = currentUser()":                             watching,
@@ -70,11 +83,11 @@ func TestDashboard(t *testing.T) {
 	}
 
 	first := d.Sections[0].Items[0]
-	if first.URL != "https://acme.atlassian.net/browse/WEB-1" || first.Where != "Website" || first.Author != "Pat" {
+	if first.URL != "https://acme.atlassian.net/browse/WEB-1" || first.Where != "WEB" || first.Author != "Pat" {
 		t.Errorf("first item %+v", first)
 	}
-	if want := time.Date(2026, 10, 6, 7, 0, 0, 0, time.UTC); !first.Updated.Equal(want) {
-		t.Errorf("updated %v, want %v", first.Updated, want)
+	if !first.Updated.IsZero() {
+		t.Errorf("search gives no dates, but updated is %v", first.Updated)
 	}
 
 	var order []string
@@ -132,6 +145,7 @@ func TestCheck(t *testing.T) {
 func TestDetail(t *testing.T) {
 	s := fakeACLI(t, map[string]string{"workitem view WEB-1": `{"key": "WEB-1", "fields": {
 	  "summary": "Fix login", "status": {"name": "In Progress", "statusCategory": {"key": "indeterminate"}},
+	  "created": "2026-10-01T09:30:00.000+0200", "updated": "2026-10-06T14:05:00.000+0200",
 	  "priority": {"name": "High"}, "issuetype": {"name": "Bug"}, "assignee": null, "reporter": {"displayName": "Pat"},
 	  "labels": ["auth"], "components": [{"name": "Web"}],
 	  "parent": {"key": "WEB-100", "fields": {"summary": "Accounts epic"}},
@@ -149,8 +163,9 @@ func TestDetail(t *testing.T) {
 	for _, f := range d.Fields {
 		fields[f.Label] = f.Value
 	}
+	updated := time.Date(2026, 10, 6, 12, 5, 0, 0, time.UTC).Local().Format("2 Jan 2006, 15:04")
 	for label, want := range map[string]string{
-		"Status": "In Progress", "Type": "Bug", "Priority": "High", "Assignee": "nobody", "Reporter": "Pat",
+		"Status": "In Progress", "Type": "Bug", "Priority": "High", "Assignee": "nobody", "Reporter": "Pat", "Updated": updated,
 		"Parent": "WEB-100 Accounts epic", "Labels": "auth", "Components": "Web", "Links": "blocks WEB-7",
 	} {
 		if fields[label] != want {

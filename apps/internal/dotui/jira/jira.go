@@ -172,7 +172,10 @@ func (is issue) url() string {
 	return base + "/browse/" + is.Key
 }
 
-const searchFields = "key,summary,status,priority,issuetype,assignee,reporter,updated,project,labels"
+// searchFields are what acli's search allows: no dates, and no project, so
+// a work item's project comes from its key, and its age only shows on its
+// page. The JQL orders by update instead.
+const searchFields = "key,summary,status,priority,issuetype,assignee,reporter,labels"
 
 // search runs a JQL query. acli prints a list of work items; an object
 // holding them under "issues" reads as well.
@@ -205,7 +208,7 @@ var sections = []struct {
 	{"Watching", "Watched, updated this week", "watcher = currentUser() AND (assignee != currentUser() OR assignee IS EMPTY) AND updated >= -7d ORDER BY updated DESC",
 		"Nothing you watch changed this week."},
 	{"Reported", "Reported by you, still open", "reporter = currentUser() AND statusCategory != Done ORDER BY updated DESC",
-		"Everything you reported is done."},
+		"Nothing you reported is open."},
 	{"Done", "Finished in the last two weeks", "assignee = currentUser() AND statusCategory = Done AND updated >= -14d ORDER BY updated DESC",
 		"Nothing finished in the last two weeks."},
 }

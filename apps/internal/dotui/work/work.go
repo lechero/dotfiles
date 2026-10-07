@@ -79,32 +79,31 @@ type Dashboard struct {
 }
 
 // FollowUps lists the items that need you, most urgent first, then most
-// recently updated. An item in two sections is listed once, for the more
-// urgent reason.
+// recently updated, then in the order the service listed them. An item in
+// two sections is listed once, for the more urgent reason.
 func (d Dashboard) FollowUps() []Item {
-	best := map[string]Item{}
+	var out []Item
+	at := map[string]int{} // where each ID is in out
 	for _, s := range d.Sections {
 		for _, it := range s.Items {
 			if it.Next == "" {
 				continue
 			}
-			if old, ok := best[it.ID]; !ok || it.Urgency > old.Urgency {
-				best[it.ID] = it
+			i, seen := at[it.ID]
+			switch {
+			case !seen:
+				at[it.ID] = len(out)
+				out = append(out, it)
+			case it.Urgency > out[i].Urgency:
+				out[i] = it
 			}
 		}
 	}
-	out := make([]Item, 0, len(best))
-	for _, it := range best {
-		out = append(out, it)
-	}
-	slices.SortFunc(out, func(a, b Item) int {
+	slices.SortStableFunc(out, func(a, b Item) int {
 		if c := cmp.Compare(b.Urgency, a.Urgency); c != 0 {
 			return c
 		}
-		if c := b.Updated.Compare(a.Updated); c != 0 {
-			return c
-		}
-		return cmp.Compare(a.ID, b.ID)
+		return b.Updated.Compare(a.Updated)
 	})
 	return out
 }
