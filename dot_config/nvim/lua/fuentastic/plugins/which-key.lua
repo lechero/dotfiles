@@ -46,6 +46,7 @@ return {
       { '<leader>g', group = '[G]it and GitLab' },
       { '<leader>o', group = '[O]pen' },
       { '<leader>f', group = '[F]ile: copy its path or contents' },
+      { '<leader>n', group = 'Harpoo[n]: jump to a marked file' },
     },
   },
 }
