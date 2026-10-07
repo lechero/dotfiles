@@ -113,6 +113,9 @@ type Model struct {
 
 	disk Disk // nil until the Disk tab first opens
 	dash *dashboard
+
+	// execute hands the terminal to a command; tests replace it.
+	execute func(cmd *exec.Cmd, done tea.ExecCallback) tea.Cmd
 }
 
 // New builds the view. It starts loading when the program runs it.
@@ -126,6 +129,7 @@ func New(cfg Config) Model {
 		brewLoading:    true,
 		chezmoiLoading: true,
 		spinner:        spinner.New(spinner.WithSpinner(spinner.Dot)),
+		execute:        tea.ExecProcess,
 	}
 	m.packages = m.newList("package", "packages", m.keys.packageKeys)
 	m.dotfiles = m.newList("change", "changes", m.keys.dotfileKeys)
@@ -281,7 +285,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.kind() {
 		case dashboardTab:
 			switch {
-			case msg.String() == "ctrl+c" || key.Matches(msg, m.keys.Quit):
+			case msg.String() == "ctrl+c":
+				return m, tea.Quit
+			case m.dash.confirm != nil: // the answer to its question
+			case key.Matches(msg, m.keys.Quit):
 				return m, tea.Quit
 			case key.Matches(msg, m.keys.SwitchTab):
 				cmd := m.switchTab(msg.String() == "shift+tab")
@@ -467,7 +474,7 @@ func (m *Model) install(items []pkgItem) tea.Cmd {
 // waits for Enter afterwards so the output can be read.
 func (m Model) runAndWait(what string, args []string) tea.Cmd {
 	cmd := exec.Command(m.cfg.Self, append([]string{"_exec"}, args...)...)
-	return tea.ExecProcess(cmd, func(err error) tea.Msg { return execDoneMsg{what: what, err: err} })
+	return m.execute(cmd, func(err error) tea.Msg { return execDoneMsg{what: what, err: err} })
 }
 
 func (m *Model) reload() tea.Cmd {
@@ -477,7 +484,8 @@ func (m *Model) reload() tea.Cmd {
 
 func (m *Model) notify(status string) tea.Cmd {
 	if m.kind() == dashboardTab {
-		return m.dash.next.NewStatusMessage(status)
+		m.dash.flash = status
+		return nil
 	}
 	if m.kind() == packagesTab {
 		return m.packages.NewStatusMessage(status)

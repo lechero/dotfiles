@@ -65,6 +65,29 @@ type dashboard struct {
 
 	next list.Model // follow-ups from every service, most urgent first
 	now  func() time.Time
+
+	// confirm is a question waiting for y, and the command y runs.
+	confirm *confirmation
+	// flash is a short message on the Next up line, until the next key.
+	// The list can't show one: it only does beside its title, which is off.
+	flash string
+}
+
+type confirmation struct {
+	question string
+	what     string
+	args     []string
+}
+
+// upgradable are the updates `brew upgrade` makes: pinned ones stay.
+func (d *dashboard) upgradable() []string {
+	var names []string
+	for _, u := range d.updates {
+		if !u.Pinned {
+			names = append(names, u.Name)
+		}
+	}
+	return names
 }
 
 // nextRow is a follow-up on the dashboard, with the tab it belongs to.
@@ -83,13 +106,13 @@ func newDashboard(st *styles, tabs int) *dashboard {
 	l.SetFilteringEnabled(false)
 	l.SetStatusBarItemName("follow-up", "follow-ups")
 	l.DisableQuitKeybindings()
-	l.StatusMessageLifetime = 4 * time.Second
 	help := func() []key.Binding {
 		return []key.Binding{
 			key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
 			key.NewBinding(key.WithKeys("1"), key.WithHelp(fmt.Sprintf("1-%d", tabs), "go to tab")),
 			key.NewBinding(key.WithKeys("i"), key.WithHelp("i", "install missing")),
 			key.NewBinding(key.WithKeys("u"), key.WithHelp("u", "update dotfiles")),
+			key.NewBinding(key.WithKeys("U"), key.WithHelp("U", "upgrade packages")),
 			key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "refresh all")),
 		}
 	}
@@ -188,6 +211,15 @@ func (m Model) missingUpTo(prio int) []pkgItem {
 // dashboardKey handles a key on the dashboard.
 func (m *Model) dashboardKey(msg tea.KeyPressMsg) tea.Cmd {
 	k := msg.String()
+	m.dash.flash = ""
+	if c := m.dash.confirm; c != nil {
+		m.dash.confirm = nil
+		if k == "y" {
+			return m.runAndWait(c.what, c.args)
+		}
+		m.dash.flash = m.styles.dim.Render("Left alone.")
+		return nil
+	}
 	if n := int(k[0] - '0'); len(k) == 1 && n >= 1 && n <= len(m.tabs) {
 		return m.setTab(n - 1)
 	}
@@ -209,6 +241,23 @@ func (m *Model) dashboardKey(msg tea.KeyPressMsg) tea.Cmd {
 		return m.install(missing)
 	case "u":
 		return m.runAndWait("update", chezmoi.Command(context.Background(), m.cfg.Source, "update").Args)
+	case "U":
+		names := m.dash.upgradable()
+		switch {
+		case !m.dash.updatesRead:
+			m.dash.flash = m.styles.dim.Render("Still checking for updates.")
+			return nil
+		case len(names) == 0:
+			m.dash.flash = m.styles.good.Render("Nothing to upgrade.")
+			return nil
+		}
+		// brew upgrade doesn't ask, so dotui does.
+		m.dash.confirm = &confirmation{
+			question: fmt.Sprintf("Upgrade %d %s with brew upgrade? %s", len(names), plural(len(names), "package", "packages"), shorten(names, 4)),
+			what:     "upgrade",
+			args:     []string{"brew", "upgrade"},
+		}
+		return nil
 	case "r":
 		cmds := []tea.Cmd{m.reload(), m.loadDashboard()}
 		for _, v := range m.services() {

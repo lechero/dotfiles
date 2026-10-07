@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -75,7 +76,7 @@ func TestDashboardIsFirstAndSumsItAllUp(t *testing.T) {
 		"Good afternoon, Miguel · Wednesday 7 October",
 		"Test Mac · macOS 26.5 · up 3 days · load 2.5 on 8 cores · battery 15%",
 		// Cards, numbered with the key that opens their tab.
-		"Packages  2", "P1 core 1/2", "✗ 1 missing: tmux · i installs", "↑ 2 updates: glab, node",
+		"Packages  2", "P1 1/2 · P2 1/1 · P3 0/1 · P4 —", "✗ 1 missing: tmux · i installs", "↑ 2 updates · U upgrades", "glab, node",
 		"Dotfiles  3", "2 to apply · 1 changed outside chezmoi", "main · 177c1e6 · 2 hours ago",
 		"↓ origin is ahead · 1 uncommitted",
 		"Disk  4", "25.0 GiB free", "of 100 GiB · 75% full", "↓ 2.0 GiB since 3 days ago", "Last clean 2 days ago, freed 1.0 GiB",
@@ -129,5 +130,41 @@ func TestDashboardWithoutReaders(t *testing.T) {
 	}
 	if strings.Contains(out, "Disk  4") {
 		t.Error("without a Disk tab, there's no Disk card")
+	}
+}
+
+func TestDashboardUpgradeAsksFirst(t *testing.T) {
+	m := dashboardModel(t)
+	m.dash.updates = append(m.dash.updates, brew.Update{Name: "python@3.11", Pinned: true})
+	ex := &executed{}
+	m.execute = ex.execute
+
+	m = keys(t, m, char('U'))
+	out := ansi.Strip(m.View().Content)
+	if !strings.Contains(out, "Upgrade 2 packages with brew upgrade? glab, node y/n") {
+		t.Fatalf("U should ask first, without the pinned package:\n%s", out)
+	}
+	m, _ = update(m, char('q'))
+	if m.dash.confirm != nil || len(ex.cmds) != 0 {
+		t.Error("any key but y should leave it alone, q too")
+	}
+	if !strings.Contains(ansi.Strip(m.View().Content), "Left alone.") {
+		t.Error("it should say it left it alone")
+	}
+
+	m = keys(t, m, char('U'))
+	// Only the hand-off is checked: what it starts afterwards reloads brew.
+	update(m, char('y'))
+	if want := []string{"/bin/dotui", "_exec", "brew", "upgrade"}; !slices.Equal(ex.last(), want) {
+		t.Errorf("y ran %q, want %q: through dotui, which waits for Enter", ex.last(), want)
+	}
+}
+
+func TestDashboardNothingToUpgrade(t *testing.T) {
+	m := dashboardModel(t)
+	m.dash.updates = nil
+	m = keys(t, m, char('U'))
+	if m.dash.confirm != nil || !strings.Contains(ansi.Strip(m.View().Content), "Nothing to upgrade.") {
+		t.Errorf("with nothing to upgrade, U should say so:\n%s", ansi.Strip(m.View().Content))
 	}
 }
