@@ -1,6 +1,7 @@
 // Package tui is dotui's interactive view: the Homebrew packages with their
-// priorities and install state, what `chezmoi apply` would change, and where
-// the disk space goes.
+// priorities and install state, what `chezmoi apply` would change, where
+// the disk space goes, and what needs following up on GitHub, GitLab and
+// Jira.
 package tui
 
 import (
@@ -20,6 +21,7 @@ import (
 	"github.com/lechero/dotfiles/apps/internal/dotui/brew"
 	"github.com/lechero/dotfiles/apps/internal/dotui/catalog"
 	"github.com/lechero/dotfiles/apps/internal/dotui/chezmoi"
+	"github.com/lechero/dotfiles/apps/internal/dotui/work"
 )
 
 // Config is what the view needs from the command line.
@@ -34,15 +36,27 @@ type Config struct {
 	// NewDisk starts the Disk tab's analyzer when the tab first opens; nil
 	// leaves the tab out.
 	NewDisk func() Disk
+	// Services get a tab each, after the others.
+	Services []work.Service
+	// Cache keeps the services' last dashboards.
+	Cache work.Cache
 }
 
-type tab int
+type tabKind int
 
 const (
-	packagesTab tab = iota
+	packagesTab tabKind = iota
 	dotfilesTab
 	diskTab
+	serviceTab
 )
+
+// tabEntry is one of the tabs along the top.
+type tabEntry struct {
+	kind    tabKind
+	name    string
+	service *serviceView // a service tab's
+}
 
 // headerHeight is the number of lines above the list.
 const headerHeight = 2
@@ -71,7 +85,8 @@ type Model struct {
 	keys   keyMap
 	styles *styles
 
-	tab           tab
+	tabs          []tabEntry
+	tab           int // the one in front, in tabs
 	width, height int
 	maxPrio       int
 	missingOnly   bool
@@ -106,9 +121,31 @@ func New(cfg Config) Model {
 	m.packages = m.newList("package", "packages", m.keys.packageKeys)
 	m.dotfiles = m.newList("change", "changes", m.keys.dotfileKeys)
 	m.dotfiles.Title = "Changes to apply"
+	m.tabs = []tabEntry{{kind: packagesTab, name: "Packages"}, {kind: dotfilesTab, name: "Dotfiles"}}
+	if cfg.NewDisk != nil {
+		m.tabs = append(m.tabs, tabEntry{kind: diskTab, name: "Disk"})
+	}
+	for _, svc := range cfg.Services {
+		v := newServiceView(svc, m.styles, cfg.Cache, cfg.Self, cfg.File)
+		m.tabs = append(m.tabs, tabEntry{kind: serviceTab, name: svc.Name(), service: v})
+	}
 	m.applyStyles(true)
 	m.showPackages()
 	return m
+}
+
+// kind is what the tab in front shows.
+func (m Model) kind() tabKind { return m.tabs[m.tab].kind }
+
+// services are the service tabs' views.
+func (m Model) services() []*serviceView {
+	var out []*serviceView
+	for _, t := range m.tabs {
+		if t.service != nil {
+			out = append(out, t.service)
+		}
+	}
+	return out
 }
 
 func (m Model) newList(singular, plural string, keys func() []key.Binding) list.Model {
@@ -121,9 +158,16 @@ func (m Model) newList(singular, plural string, keys func() []key.Binding) list.
 	return l
 }
 
-// Init starts loading brew and chezmoi state.
+// Init starts loading brew and chezmoi state, and checks the services.
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.spinner.Tick, loadBrew, loadChezmoi(m.cfg.Source), tea.RequestBackgroundColor)
+	cmds := []tea.Cmd{m.spinner.Tick, loadBrew, loadChezmoi(m.cfg.Source), tea.RequestBackgroundColor}
+	for _, v := range m.services() {
+		cmds = append(cmds, v.check())
+	}
+	if len(m.cfg.Services) > 0 {
+		cmds = append(cmds, refreshTick())
+	}
+	return tea.Batch(cmds...)
 }
 
 func loadBrew() tea.Msg {
@@ -152,6 +196,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width, m.height = msg.Width, msg.Height
 		m.packages.SetSize(msg.Width, msg.Height-headerHeight)
 		m.dotfiles.SetSize(msg.Width, msg.Height-headerHeight)
+		for _, v := range m.services() {
+			v.setSize(msg.Width, msg.Height)
+		}
 		cmd := m.updateDisk(m.diskSize())
 		return m, cmd
 
@@ -185,6 +232,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd := m.showChanges()
 		return m, cmd
 
+	case checkedMsg:
+		return m, msg.v.update(msg)
+	case dashLoadedMsg:
+		return m, msg.v.update(msg)
+	case detailLoadedMsg:
+		return m, msg.v.update(msg)
+	case actionDoneMsg:
+		return m, msg.v.update(msg)
+	case composedMsg:
+		return m, msg.v.update(msg)
+	case flashMsg:
+		return m, msg.v.update(msg)
+	case refreshMsg:
+		cmds := []tea.Cmd{refreshTick()}
+		for _, v := range m.services() {
+			cmds = append(cmds, v.load())
+		}
+		return m, tea.Batch(cmds...)
+
 	case execDoneMsg:
 		status := m.styles.good.Render(msg.what + " finished")
 		if msg.err != nil {
@@ -194,8 +260,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case tea.KeyPressMsg:
-		if m.tab == diskTab {
+		switch m.kind() {
+		case diskTab:
 			cmd := m.diskKey(msg)
+			return m, cmd
+		case serviceTab:
+			cmd := m.serviceKey(m.tabs[m.tab].service, msg)
 			return m, cmd
 		}
 		if msg.String() == "ctrl+c" {
@@ -207,22 +277,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return model, cmd
 			}
 		}
-		cmd := m.updateList(m.tab, msg)
+		cmd := m.updateList(m.kind(), msg)
 		return m, cmd
 
 	case tea.MouseMsg: // the mouse is only on for the Disk tab
-		if m.tab == diskTab {
+		if m.kind() == diskTab {
 			cmd := m.diskMouse(msg)
 			return m, cmd
 		}
 		return m, nil
 
 	case list.FilterMatchesMsg: // for the list being filtered, on the tab in front
-		if m.tab == diskTab {
+		switch m.kind() {
+		case diskTab:
 			cmd := m.updateDisk(msg)
 			return m, cmd
+		case serviceTab:
+			v := m.tabs[m.tab].service
+			var cmd tea.Cmd
+			*v.list(), cmd = v.list().Update(msg)
+			return m, cmd
 		}
-		cmd := m.updateList(m.tab, msg)
+		cmd := m.updateList(m.kind(), msg)
 		return m, cmd
 
 	default:
@@ -234,8 +310,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// serviceKey handles a key on a service's tab. tab switches tabs and q
+// quits, unless the tab is asking something or a filter is being typed.
+func (m *Model) serviceKey(v *serviceView, msg tea.KeyPressMsg) tea.Cmd {
+	if msg.String() == "ctrl+c" {
+		return tea.Quit
+	}
+	if !v.takesKeys() {
+		switch {
+		case key.Matches(msg, m.keys.SwitchTab):
+			return m.switchTab(msg.String() == "shift+tab")
+		case key.Matches(msg, m.keys.Quit):
+			return tea.Quit
+		}
+	}
+	return v.key(msg)
+}
+
 // updateList passes msg to the list on tab t, if it has one.
-func (m *Model) updateList(t tab, msg tea.Msg) tea.Cmd {
+func (m *Model) updateList(t tabKind, msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	switch t {
 	case packagesTab:
@@ -248,7 +341,7 @@ func (m *Model) updateList(t tab, msg tea.Msg) tea.Cmd {
 
 // switchTab moves to the next tab, or the previous one.
 func (m *Model) switchTab(back bool) tea.Cmd {
-	n := tab(len(m.tabNames()))
+	n := len(m.tabs)
 	next := (m.tab + 1) % n
 	if back {
 		next = (m.tab + n - 1) % n
@@ -256,9 +349,9 @@ func (m *Model) switchTab(back bool) tea.Cmd {
 	return m.setTab(next)
 }
 
-func (m *Model) setTab(t tab) tea.Cmd {
+func (m *Model) setTab(t int) tea.Cmd {
 	m.tab = t
-	if t == diskTab {
+	if m.kind() == diskTab {
 		return m.openDisk()
 	}
 	return nil
@@ -276,7 +369,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 		return m, cmd, true
 	}
 
-	if m.tab == packagesTab {
+	if m.kind() == packagesTab {
 		switch {
 		case key.Matches(msg, m.keys.Prio):
 			m.maxPrio = int(msg.String()[0] - '0')
@@ -355,7 +448,7 @@ func (m *Model) reload() tea.Cmd {
 }
 
 func (m *Model) notify(status string) tea.Cmd {
-	if m.tab == packagesTab {
+	if m.kind() == packagesTab {
 		return m.packages.NewStatusMessage(status)
 	}
 	return m.dotfiles.NewStatusMessage(status)
@@ -380,7 +473,7 @@ func (m *Model) showChanges() tea.Cmd {
 }
 
 func (m Model) active() list.Model {
-	if m.tab == packagesTab {
+	if m.kind() == packagesTab {
 		return m.packages
 	}
 	return m.dotfiles
@@ -391,33 +484,41 @@ func (m Model) active() list.Model {
 // blocks on the map; elsewhere the terminal keeps selecting text.
 func (m Model) View() tea.View {
 	var content string
-	if m.tab == diskTab {
+	switch m.kind() {
+	case diskTab:
 		body := m.styles.dim.Render(" Starting the disk analyzer…")
 		if m.disk != nil {
 			body = m.disk.Content()
 		}
 		content = lipgloss.JoinVertical(lipgloss.Left, m.tabsLine(), body)
-	} else {
+	case serviceTab:
+		content = lipgloss.JoinVertical(lipgloss.Left, m.tabsLine(), m.tabs[m.tab].service.render())
+	default:
 		content = lipgloss.JoinVertical(lipgloss.Left, m.tabsLine(), m.summaryLine(), m.active().View())
 	}
 	v := tea.NewView(content)
 	v.AltScreen = true
 	v.WindowTitle = "dotui"
-	if m.tab == diskTab {
+	if m.kind() == diskTab {
 		v.MouseMode = tea.MouseModeCellMotion
 	}
 	return v
 }
 
-func (m Model) tabNames() []string {
-	names := []string{"Packages", "Dotfiles"}
-	if m.cfg.NewDisk != nil {
-		names = append(names, "Disk")
+// tabText draws tab t's name, and for a service how many items need you.
+// The count is drawn beside the tab's style, not inside it: styling inside
+// an underlined style garbles.
+func (m Model) tabText(t int) string {
+	style := m.tabStyle(t)
+	if v := m.tabs[t].service; v != nil {
+		if n := v.followUps(); n > 0 {
+			return style.PaddingRight(0).Render(m.tabs[t].name) + " " + m.styles.warn.Render(fmt.Sprint(n)) + " "
+		}
 	}
-	return names
+	return style.Render(m.tabs[t].name)
 }
 
-func (m Model) tabStyle(t tab) lipgloss.Style {
+func (m Model) tabStyle(t int) lipgloss.Style {
 	if t == m.tab {
 		return m.styles.tabActive
 	}
@@ -426,15 +527,15 @@ func (m Model) tabStyle(t tab) lipgloss.Style {
 
 func (m Model) tabsLine() string {
 	tabs := []string{m.styles.title.Render("dotui")}
-	for t, name := range m.tabNames() {
-		tabs = append(tabs, m.tabStyle(tab(t)).Render(name))
+	for t := range m.tabs {
+		tabs = append(tabs, m.tabText(t))
 	}
 	line := strings.Join(tabs, " ")
 	if m.brewLoading || m.chezmoiLoading {
 		line += "  " + m.spinner.View() + m.styles.dim.Render(" checking…")
 	}
 	// The analyzer's own help can't mention tab, which is dotui's.
-	if m.tab == diskTab {
+	if m.kind() == diskTab {
 		hint := m.styles.dim.Render("tab switch view ")
 		if gap := m.width - lipgloss.Width(line) - lipgloss.Width(hint); gap > 1 {
 			line += strings.Repeat(" ", gap) + hint
@@ -444,13 +545,13 @@ func (m Model) tabsLine() string {
 }
 
 // tabAt returns the tab whose name is at column x of the tab line.
-func (m Model) tabAt(x int) (tab, bool) {
+func (m Model) tabAt(x int) (int, bool) {
 	pos := lipgloss.Width(m.styles.title.Render("dotui"))
-	for t, name := range m.tabNames() {
+	for t := range m.tabs {
 		pos++ // the space before each name
-		w := lipgloss.Width(m.tabStyle(tab(t)).Render(name))
+		w := lipgloss.Width(m.tabText(t))
 		if x >= pos && x < pos+w {
-			return tab(t), true
+			return t, true
 		}
 		pos += w
 	}
@@ -458,7 +559,7 @@ func (m Model) tabAt(x int) (tab, bool) {
 }
 
 func (m Model) summaryLine() string {
-	if m.tab == dotfilesTab {
+	if m.kind() == dotfilesTab {
 		return " " + m.dotfilesSummary()
 	}
 	if m.brewErr != nil {
@@ -521,6 +622,12 @@ func (m *Model) applyStyles(isDark bool) {
 	for _, l := range []*list.Model{&m.packages, &m.dotfiles} {
 		l.Styles = list.DefaultStyles(isDark)
 		l.Styles.Title = m.styles.accent
+	}
+	for _, v := range m.services() {
+		for i := range v.lists {
+			v.lists[i].Styles = list.DefaultStyles(isDark)
+		}
+		v.renderPage()
 	}
 }
 
