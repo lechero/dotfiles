@@ -92,6 +92,17 @@ func loadFree(dir string) []freeSample {
 	return out
 }
 
+// FreeHistory is the free space manage-disk recorded, oldest first: when
+// each reading was taken and what was free then. It only reads, for a
+// program like dotui to show the trend.
+func FreeHistory(stateDir string) (at []time.Time, free []int64) {
+	for _, s := range loadFree(stateDir) {
+		at = append(at, s.At)
+		free = append(free, s.Free)
+	}
+	return at, free
+}
+
 var sparks = []rune("▁▂▃▄▅▆▇█")
 
 // sparkline draws the last width samples, low to high between their own min and max.
