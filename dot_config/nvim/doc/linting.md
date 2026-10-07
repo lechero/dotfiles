@@ -8,7 +8,7 @@ only runs in a project that uses it. The config lives in:
 | --- | --- |
 | `lua/fuentastic/plugins/lint.lua` | checkstyle, Stylelint, html-validate and Nunjucks through nvim-lint |
 | `scripts/nunjucks-lint.js` | Checks a Backstage template the way Backstage renders it |
-| `lua/fuentastic/config/lsp.lua` | The ESLint, XML (lemminx) and JSON language servers |
+| `lua/fuentastic/config/lsp.lua` | The ESLint, XML (lemminx), JSON and YAML language servers |
 
 | Linter | Runs on | When the project has | When |
 | --- | --- | --- | --- |
@@ -92,6 +92,11 @@ A file in a `skeleton/` folder with Nunjucks markup in it (`ftdetect/backstage.l
 
 Nunjucks and jsonc-parser are installed by npm in `~/.local/share/nvim/nunjucks` the first time a
 template is opened, and need Node on the `PATH`.
+
+The `template.yaml` gets Backstage's schema (SchemaStore's `catalog-info.json`, which has the
+Template kind) from yamlls, as does any YAML with a `backstage.io` `apiVersion`. That's by
+content, not by name: by name, SchemaStore gives every `template.yaml` AWS SAM's schema, which
+rejects `apiVersion`, `kind`, `metadata` and `spec`.
 
 ## Troubleshooting
 

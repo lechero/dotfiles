@@ -86,6 +86,15 @@ local function setup_lsp()
   -- in .gitlab/ci/ that the pipeline includes are named anything.
   local gitlab_ci_schema = 'https://gitlab.com/gitlab-org/gitlab-foss/-/raw/master/app/assets/javascripts/editor/schema/ci.json'
 
+  -- Backstage's entities, Templates included, by their apiVersion: by name, SchemaStore knows only
+  -- catalog-info.yaml, and gives every template.yaml AWS SAM's schema.
+  local backstage_schema = 'https://www.schemastore.org/catalog-info.json'
+  local function backstage_entity(buf)
+    return vim.iter(vim.api.nvim_buf_get_lines(buf, 0, 20, false)):any(function(line)
+      return line:match '^apiVersion:%s*["\']?[%w.]*backstage%.io/' ~= nil
+    end)
+  end
+
   -- The `--flag`s a project's own lint scripts pass to ESLint (`eslint ./ --flag
   -- v10_config_lookup_from_file`), so the editor picks the same config files as CI.
   local function eslint_flags(root)
@@ -114,12 +123,23 @@ local function setup_lsp()
     yamlls = {
       settings = {
         yaml = {
-          schemas = { [gitlab_ci_schema] = { '.gitlab/ci/**/*.yml', '.gitlab/ci/**/*.yaml' } },
+          schemas = {
+            [gitlab_ci_schema] = { '.gitlab/ci/**/*.yml', '.gitlab/ci/**/*.yaml' },
+            [backstage_schema] = {}, -- the files on_attach finds; ahead of SchemaStore's
+          },
           customTags = { '!reference sequence' }, -- GitLab's; otherwise "Unresolved tag" on each use
           format = { enable = false }, -- it would rewrite CI files on save (lspconfig turns it on)
         },
       },
       on_init = function() end, -- lspconfig's claims formatting support regardless
+      on_attach = function(client, buf)
+        local files = client.settings.yaml.schemas[backstage_schema]
+        local file = vim.api.nvim_buf_get_name(buf)
+        if backstage_entity(buf) and not vim.list_contains(files, file) then
+          table.insert(files, file)
+          client:notify('workspace/didChangeConfiguration', { settings = client.settings })
+        end
+      end,
     },
     -- extends, needs, !reference, includes and components (doc/gitlab.md); needs Rust 1.85+ to build
     gitlab_ci_ls = {},
