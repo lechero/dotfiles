@@ -41,6 +41,17 @@ dock -d rancher  # new shells start on Rancher Desktop too
 
 Other shells keep their own engine, and tide shows the current one at the far right, after the clock, in that engine's color. Anything you start from this shell inherits it, so a Neovim started here opens lazydocker (`;d`) on it too. A new tmux pane starts on the default, or on docker's own context if there's none. Switching doesn't touch kubectl's context, which tide only shows for a real cluster: it hides the local `rancher-desktop` and `docker-desktop` ones (`tide_kubectl_default_contexts`).
 
+## Asking for a command
+
+Type what you want at the prompt in plain words and press `alt-a`. Copilot replaces it with a command, which you check, edit if needed and run with `enter`. Nothing runs on its own:
+
+```fish
+find files over 500MB below here   # alt-a, and the line becomes:
+find . -type f -size +500M
+```
+
+`ask` does the same and prints the command, as in `ask list docker volumes nobody uses`. It goes through the Copilot CLI (`copilot`) on your Copilot plan and takes a few seconds, longer for the first question in a while. It uses gpt-4.1 unless `ask_model` names another of the models in `copilot --help` that your plan offers (`set -U ask_model <model>`). Copilot gets no tools for it and runs in an empty folder, so it sees only the question: not your files, and not your MCP servers.
+
 ## Secrets
 
 API keys go in `~/.config/fish/secrets.fish`, which `conf.d/00-env.fish` loads in every shell. chezmoi ignores it, so it never reaches the repo:
@@ -66,4 +77,5 @@ chezmoi re-add ~/.config/fish/fish_plugins
 | `ctrl-alt-l` / `ctrl-alt-s` | Search the git log / git status |
 | `ctrl-alt-p` / `ctrl-alt-v` | Search processes / variables |
 | `ctrl-s` | Accept the autosuggestion and run it |
+| `alt-a` | Swap the question on the command line for Copilot's command (see [Asking for a command](#asking-for-a-command)) |
 | `ctrl-up` / `ctrl-down` | Search history for the word under the cursor |

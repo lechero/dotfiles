@@ -28,5 +28,8 @@ Taskfile.yml
 .config/fish/secrets.fish
 .config/fish/plugins
 
+# Copilot in Neovim: which projects use which account, and those accounts' sign-ins
+.config/copilot-accounts
+
 # tmux: the plugins TPM installs
 .config/tmux/plugins

@@ -127,6 +127,11 @@ Typical maintenance flow:
 
 Use `:Lazy restore` to get back to the revisions recorded in `lazy-lock.json`.
 
+### Copilot
+
+Copilot suggests code as you type. `:CopilotAccount` shows which GitHub account it uses, and
+projects can use a different account from everything else; see [doc/copilot.md](doc/copilot.md).
+
 ### Java development
 
 Java (jdtls, debugging, tests) is set up out of the box; see [doc/java.md](doc/java.md) for
