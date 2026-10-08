@@ -14,6 +14,14 @@ if status is-interactive
         enable_transience
     end
 
+    # docker and lazydocker use the engine `dock --default` saved, unless this
+    # shell inherited a DOCKER_HOST from the one that started it. Only here,
+    # not in conf.d: tide renders the prompt in non-interactive shells, which
+    # must show this shell's engine, not the default.
+    if set -q dock_default; and not set -q DOCKER_HOST
+        set -gx DOCKER_HOST $dock_default
+    end
+
     _cached_source zoxide init fish
     _cached_source jump shell fish
 

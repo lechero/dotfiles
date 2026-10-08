@@ -21,7 +21,7 @@ set -g tide_prompt_min_cols 34
 set -g tide_prompt_pad_items true
 set -g tide_prompt_transient_enabled true
 set -g tide_right_prompt_frame_enabled false
-set -g tide_right_prompt_items status cmd_duration context jobs direnv node python rustc java php pulumi ruby go gcloud kubectl distrobox toolbox terraform aws nix_shell crystal elixir zig time
+set -g tide_right_prompt_items status cmd_duration context jobs direnv node python rustc java php pulumi ruby go gcloud dock kubectl distrobox toolbox terraform aws nix_shell crystal elixir zig time
 set -g tide_right_prompt_prefix 
 set -g tide_right_prompt_separator_diff_color 
 set -g tide_right_prompt_separator_same_color 
@@ -64,6 +64,19 @@ set -g tide_direnv_icon ▼
 set -g tide_distrobox_bg_color FF00FF
 set -g tide_distrobox_color 000000
 set -g tide_distrobox_icon 󰆧
+
+# dock is this repo's item (functions/_tide_item_dock.fish): the engine `dock`
+# pointed DOCKER_HOST at, in that engine's colors. Rancher gets SUSE's green to
+# tell it from Docker's blue.
+set -g tide_dock_bg_color 6C6C6C
+set -g tide_dock_color FFFFFF
+set -g tide_dock_icon 
+set -g tide_dock_docker_bg_color 2496ED
+set -g tide_dock_docker_color 000000
+set -g tide_dock_podman_bg_color 892CA0
+set -g tide_dock_podman_color FFFFFF
+set -g tide_dock_rancher_bg_color 30BA78
+set -g tide_dock_rancher_color 000000
 
 set -g tide_docker_bg_color 2496ED
 set -g tide_docker_color 000000
