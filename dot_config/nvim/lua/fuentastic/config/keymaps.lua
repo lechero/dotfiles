@@ -44,7 +44,22 @@ local function copy_with_pbcopy(payload, success_message)
 end
 
 map('n', '<Esc>', '<cmd>nohlsearch<CR>')
-map('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
+-- Warnings and errors from every open file in the quickfix list, leaving out hints and info; again
+-- to close it. Language servers mostly check the files you've opened, so those are what it lists.
+map('n', '<leader>q', function()
+  local title = 'Warnings and errors'
+  local qf = vim.fn.getqflist { title = 0, winid = 0 }
+  if qf.winid ~= 0 and qf.title == title then
+    vim.cmd.cclose()
+    return
+  end
+  local severity = { min = vim.diagnostic.severity.WARN }
+  if #vim.diagnostic.get(nil, { severity = severity }) == 0 then
+    vim.notify 'No warnings or errors in the open files'
+    return
+  end
+  vim.diagnostic.setqflist { title = title, severity = severity }
+end, { desc = '[Q]uickfix list of warnings and errors (again to close)' })
 map('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
 map('v', '<C-r>', '"hy:%s/<C-r>h//gc<left><left><left>')
