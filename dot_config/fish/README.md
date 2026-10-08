@@ -28,6 +28,19 @@ prompt-switch starship
 
 `prompt-switch` with no argument switches to the other one. The choice is saved per machine and takes effect in new shells. The shell you run it in restarts right away, unless it has jobs running.
 
+## Containers
+
+`dock` picks the container engine for the shell you're in: Rancher Desktop, Docker Desktop or Podman. It sets `DOCKER_HOST`, which `docker`, `docker compose` and lazydocker (`lz`) follow, and starts the engine if it isn't running:
+
+```fish
+dock podman      # this shell, and anything you start from it
+dock             # pick one with fzf, with which ones are running
+dock off         # back to docker's own current context
+dock -d rancher  # new shells start on Rancher Desktop too
+```
+
+Other shells keep their own engine, and tide shows the current one on the right, in that engine's color. Anything you start from this shell inherits it, so a Neovim started here opens lazydocker (`;d`) on it too. A new tmux pane starts on the default, or on docker's own context if there's none. Switching doesn't touch kubectl's context.
+
 ## Secrets
 
 API keys go in `~/.config/fish/secrets.fish`, which `conf.d/00-env.fish` loads in every shell. chezmoi ignores it, so it never reaches the repo:
