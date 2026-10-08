@@ -17,7 +17,18 @@ return {
     { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
   },
   config = function()
+    -- Searching files and grepping include hidden files and folders (.gitlab-ci.yml, .github/),
+    -- but not Git's own .git folder, which ripgrep's --hidden would search too. What .gitignore
+    -- lists, like node_modules, still stays out. A function, as live_grep adds to the list it gets.
+    local function hidden_args()
+      return { '--hidden', '--glob=!.git/' }
+    end
     require('telescope').setup {
+      pickers = {
+        find_files = { find_command = vim.list_extend({ 'rg', '--files', '--color=never' }, hidden_args()) },
+        live_grep = { additional_args = hidden_args },
+        grep_string = { additional_args = hidden_args },
+      },
       extensions = {
         ['ui-select'] = {
           require('telescope.themes').get_dropdown(),
