@@ -21,7 +21,7 @@ set -g tide_prompt_min_cols 34
 set -g tide_prompt_pad_items true
 set -g tide_prompt_transient_enabled true
 set -g tide_right_prompt_frame_enabled false
-set -g tide_right_prompt_items status cmd_duration context jobs direnv node python rustc java php pulumi ruby go gcloud dock kubectl distrobox toolbox terraform aws nix_shell crystal elixir zig time
+set -g tide_right_prompt_items status cmd_duration context jobs direnv node python rustc java php pulumi ruby go gcloud kubectl distrobox toolbox terraform aws nix_shell crystal elixir zig time dock
 set -g tide_right_prompt_prefix 
 set -g tide_right_prompt_separator_diff_color 
 set -g tide_right_prompt_separator_same_color 
@@ -67,7 +67,8 @@ set -g tide_distrobox_icon 󰆧
 
 # dock is this repo's item (functions/_tide_item_dock.fish): the engine `dock`
 # pointed DOCKER_HOST at, in that engine's colors. Rancher gets SUSE's green to
-# tell it from Docker's blue.
+# tell it from Docker's blue. It comes after the clock, which always shows, so
+# it's never next to kubectl, whose blue would make the two look like one item.
 set -g tide_dock_bg_color 6C6C6C
 set -g tide_dock_color FFFFFF
 set -g tide_dock_icon 
@@ -121,6 +122,8 @@ set -g tide_jobs_number_threshold 1000
 
 set -g tide_kubectl_bg_color 326CE5
 set -g tide_kubectl_color 000000
+# Not a tide setting: functions/_tide_item_kubectl.fish hides these contexts.
+set -g tide_kubectl_default_contexts rancher-desktop docker-desktop
 set -g tide_kubectl_icon 󱃾
 
 set -g tide_nix_shell_bg_color 7EBAE4
