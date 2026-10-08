@@ -39,7 +39,7 @@ dock off         # back to docker's own current context
 dock -d rancher  # new shells start on Rancher Desktop too
 ```
 
-Other shells keep their own engine, and tide shows the current one on the right, in that engine's color. Anything you start from this shell inherits it, so a Neovim started here opens lazydocker (`;d`) on it too. A new tmux pane starts on the default, or on docker's own context if there's none. Switching doesn't touch kubectl's context.
+Other shells keep their own engine, and tide shows the current one at the far right, after the clock, in that engine's color. Anything you start from this shell inherits it, so a Neovim started here opens lazydocker (`;d`) on it too. A new tmux pane starts on the default, or on docker's own context if there's none. Switching doesn't touch kubectl's context, which tide only shows for a real cluster: it hides the local `rancher-desktop` and `docker-desktop` ones (`tide_kubectl_default_contexts`).
 
 ## Secrets
 
