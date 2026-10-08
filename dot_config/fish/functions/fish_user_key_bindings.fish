@@ -11,5 +11,7 @@ function fish_user_key_bindings
         bind -M $mode ctrl-t transpose-chars
         # Accept the autosuggestion and run it
         bind -M $mode ctrl-s accept-autosuggestion execute
+        # Swap the question on the command line for Copilot's command (ask.fish)
+        bind -M $mode alt-a 'ask --commandline'
     end
 end
